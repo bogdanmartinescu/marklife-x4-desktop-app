@@ -1,0 +1,23 @@
+{
+  "name": "thermalbridge",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.2.2",
+  "scripts": {
+    "dev": "pnpm --filter @thermalbridge/desktop dev",
+    "build": "pnpm --filter @thermalbridge/desktop build",
+    "printbridge:build": "node scripts/build-printbridge.mjs",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "label:build": "pnpm --filter @thermalbridge/cli build-label"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "eslint": "^9.32.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0"
+  }
+}

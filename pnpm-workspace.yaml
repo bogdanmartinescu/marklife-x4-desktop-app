@@ -1,0 +1,12 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+shamefullyHoist: true
+strictPeerDependencies: false
+confirmModulesPurge: false
+
+allowBuilds:
+  electron: true
+  esbuild: true
+  electron-winstaller: true

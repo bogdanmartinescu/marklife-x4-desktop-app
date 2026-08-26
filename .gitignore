@@ -1,0 +1,27 @@
+node_modules/
+dist/
+out/
+release/
+coverage/
+.vite/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Rust
+native/printbridge/target/
+**/*.rs.bk
+
+# Generated print jobs
+*.prn
+!packages/test-fixtures/**/*.prn
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Local package store
+.pnpm-store/

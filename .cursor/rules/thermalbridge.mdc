@@ -1,0 +1,52 @@
+---
+description: ThermalBridge engineering rules from README §35
+alwaysApply: true
+---
+
+# ThermalBridge engineering rules
+
+## Engineering behavior
+
+- Work in small, reviewable increments.
+- Do not refactor unrelated modules while completing a milestone.
+- Preserve strict TypeScript (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`).
+- Avoid `any`. Use `unknown` at Zod/IPC boundaries.
+- Validate all IPC/native-boundary data.
+- Do not introduce a dependency when a small standard-library implementation is clearer.
+- Keep `thermal-core` platform-independent. No Electron or Node imports.
+- Keep printer transport out of renderer code.
+- Never execute arbitrary shell commands based on renderer input.
+- Never send binary printer data through string conversions. Jobs stay `Uint8Array` through the pipeline.
+- Write tests before modifying bitmap byte-order logic.
+- Prefer explicit domain types over primitive argument lists.
+- Return typed domain errors.
+- Keep vendor compatibility assumptions isolated in printer profiles.
+- Do not copy code from vendor binaries.
+- Do not bundle vendor drivers (`rastertoX4`, DLLs, OEM installers).
+- Use `.js` extensions on all relative TypeScript ESM imports.
+- Centralise bitmap encoding assumptions in `BitmapEncoding`. Do not scatter MSB/LSB or polarity flags.
+
+## Electron security
+
+```ts
+webPreferences: {
+  nodeIntegration: false,
+  contextIsolation: true,
+  sandbox: true,
+}
+```
+
+Never expose shell, arbitrary FS reads/writes, or raw bridge commands to the renderer.
+
+## Rust
+
+- `Result<T, BridgeError>` everywhere on transport paths.
+- No `unwrap()` on transport paths — use `?` or explicit `map_err`.
+- CUPS transport: `#[cfg(any(target_os = "macos", target_os = "linux"))]`.
+- Windows spooler: `#[cfg(target_os = "windows")]`.
+- TCP, USB, Serial, BLE: cross-platform.
+- Never auto-detach a USB kernel driver.
+
+## Definition of done
+
+A task is not complete until lint, typecheck, and unit tests pass; changed behavior has tests; errors are handled; and no debug console spam remains.

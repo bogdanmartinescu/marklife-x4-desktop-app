@@ -1,0 +1,25 @@
+appId: app.thermalbridge.desktop
+productName: ThermalBridge
+directories:
+  output: release
+  buildResources: resources
+files:
+  - out/**/*
+extraResources:
+  - from: ../../native/printbridge/target/release/printbridge
+    to: printbridge
+    filter:
+      - printbridge
+      - printbridge.exe
+mac:
+  category: public.app-category.utilities
+  target:
+    - dmg
+    - zip
+win:
+  target:
+    - nsis
+linux:
+  target:
+    - AppImage
+    - deb

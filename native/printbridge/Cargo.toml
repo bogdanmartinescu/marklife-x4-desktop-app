@@ -1,0 +1,29 @@
+[package]
+name = "printbridge"
+version = "0.1.0"
+edition = "2021"
+description = "ThermalBridge native print sidecar"
+license = "UNLICENSED"
+publish = false
+
+[dependencies]
+btleplug = "0.11"
+rusb = { version = "0.9", features = ["vendored"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serialport = "4"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util", "time", "net", "sync"] }
+futures = "0.3"
+uuid = { version = "1", features = ["v4"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Printing",
+    "Win32_Graphics_Gdi",
+] }
+
+[profile.release]
+lto = true
+codegen-units = 1
