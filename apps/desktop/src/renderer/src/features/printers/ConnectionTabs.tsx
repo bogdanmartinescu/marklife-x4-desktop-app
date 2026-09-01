@@ -1,19 +1,16 @@
 import { useState } from 'react';
-import type { PrinterBinding, PrinterBackend, PrinterInfo } from '@thermalbridge/shared';
-import { Bluetooth } from 'lucide-react';
+import type { PrinterBinding, PrinterInfo } from '@thermalbridge/shared';
+import { Bluetooth, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
 import { Input } from '@/components/ui/input.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { Field } from '@/components/field.js';
 import { useI18n } from '@/i18n/I18nProvider.js';
-import type { MessageKey } from '@/i18n/messages.js';
-import { ConnectionStatusBadge } from './ConnectionStatusBadge.js';
+import { DeviceList } from './DeviceList.js';
 import {
-  linkStateFromDevice,
   mergePrinterCatalog,
   resolveLinkState,
-  type LinkState,
 } from './connection-status.js';
 import { bleBindingExtra, serialBindingExtra, usbBindingExtra } from './binding-extra.js';
 import { sortLikelyPrintersFirst } from './likely-printer.js';
@@ -39,19 +36,10 @@ interface ConnectionTabsProps {
   onOpenBluetoothPairing: () => Promise<void>;
 }
 
-const BACKEND_KEYS: Record<PrinterBackend, MessageKey> = {
-  'windows-spooler': 'backendWindows',
-  cups: 'backendCups',
-  tcp: 'backendTcp',
-  usb: 'backendUsb',
-  'bluetooth-spp': 'backendSpp',
-  'bluetooth-ble': 'backendBle',
-};
-
 export function ConnectionTabs(props: ConnectionTabsProps) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>(props.initialTab ?? 'usb');
-  const [btMode, setBtMode] = useState<BtMode>(props.initialBtMode ?? 'spp');
+  const [btMode, setBtMode] = useState<BtMode>(props.initialBtMode ?? 'ble');
   const [tcpHost, setTcpHost] = useState('192.168.1.80');
   const [tcpPort, setTcpPort] = useState('9100');
   const [manualPort, setManualPort] = useState('');
@@ -90,7 +78,7 @@ export function ConnectionTabs(props: ConnectionTabsProps) {
 
   return (
     <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
-      <TabsList variant="line" className="w-full justify-start">
+      <TabsList variant="line" className="w-full flex-wrap justify-start">
         <TabsTrigger value="usb">{t('tabUsb')}</TabsTrigger>
         <TabsTrigger value="bluetooth">{t('tabBluetooth')}</TabsTrigger>
         <TabsTrigger value="os">{t('tabOs')}</TabsTrigger>
@@ -155,29 +143,76 @@ export function ConnectionTabs(props: ConnectionTabsProps) {
         />
       </TabsContent>
 
-      <TabsContent value="bluetooth" className="space-y-4 pt-4">
-        <Alert>
-          <AlertDescription>{t('bluetoothHint')}</AlertDescription>
-        </Alert>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" disabled={pairing} onClick={() => void openPairing()}>
-            <Bluetooth />
-            {pairing ? t('pairing') : t('pairBluetooth')}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">{t('pairBluetoothHint')}</p>
+      <TabsContent value="bluetooth" className="space-y-3 pt-4">
         <Tabs value={btMode} onValueChange={(value) => setBtMode(value as BtMode)}>
           <TabsList>
-            <TabsTrigger value="spp">{t('spp')}</TabsTrigger>
             <TabsTrigger value="ble">{t('ble')}</TabsTrigger>
+            <TabsTrigger value="spp">{t('spp')}</TabsTrigger>
           </TabsList>
+          <TabsContent value="ble" className="space-y-3 pt-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" disabled={props.scanning} onClick={props.onScanBle}>
+                {props.scanning ? <Loader2 className="animate-spin" /> : <Bluetooth />}
+                {props.scanning ? t('scanning') : t('scanBle')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pairing}
+                onClick={() => void openPairing()}
+              >
+                {pairing ? t('pairing') : t('pairBluetooth')}
+              </Button>
+              {bleList.length > 0 ? (
+                <p className="ml-auto text-ui-xs text-ink-400">
+                  {t('devicesFound', { n: bleList.length })}
+                </p>
+              ) : null}
+            </div>
+            {props.scanError ? (
+              <Alert>
+                <AlertDescription>{props.scanError}</AlertDescription>
+              </Alert>
+            ) : null}
+            <DeviceList
+              devices={bleList}
+              empty={t('noBle')}
+              scanning={props.scanning}
+              selectedId={props.selectedId}
+              subtitle={(device) => device.btAddress}
+              stateFor={(device) =>
+                resolveLinkState({
+                  printerId: device.id,
+                  printers: bleList,
+                  usbDevices: props.usbDevices,
+                  sppPorts: props.sppPorts,
+                  bleDevices: props.bleDevices,
+                })
+              }
+              onSelect={(device) => props.onSelect(device, bleBindingExtra(device))}
+            />
+            <details className="rounded-lg border border-white/5 bg-ink-850/40 px-3 py-2 text-ui-xs text-ink-400">
+              <summary className="cursor-pointer select-none text-ink-300">{t('bleProtocolNotes')}</summary>
+              <div className="mt-2 space-y-2 text-ink-400">
+                <p>{t('x4BleUnsupported')}</p>
+                <p>{t('bleHint')}</p>
+              </div>
+            </details>
+          </TabsContent>
           <TabsContent value="spp" className="space-y-4 pt-4">
-            <Alert>
-              <AlertDescription>{t('protocol7Unimplemented')}</AlertDescription>
-            </Alert>
-            <Button type="button" variant="outline" onClick={props.onRefreshSpp}>
-              {t('refreshSpp')}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" onClick={props.onRefreshSpp}>
+                {t('refreshSpp')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pairing}
+                onClick={() => void openPairing()}
+              >
+                {pairing ? t('pairing') : t('pairBluetooth')}
+              </Button>
+            </div>
             <DeviceList
               devices={sppList}
               empty={t('sppEmpty')}
@@ -212,86 +247,13 @@ export function ConnectionTabs(props: ConnectionTabsProps) {
             >
               {t('useSpp')}
             </Button>
-          </TabsContent>
-          <TabsContent value="ble" className="space-y-4 pt-4">
-            <Alert>
-              <AlertDescription>{t('x4BleUnsupported')}</AlertDescription>
-            </Alert>
-            <Alert>
-              <AlertDescription>{t('bleHint')}</AlertDescription>
-            </Alert>
-            <Button type="button" disabled={props.scanning} onClick={props.onScanBle}>
-              {props.scanning ? t('scanning') : t('scanBle')}
-            </Button>
-            {props.scanError ? (
-              <Alert>
-                <AlertDescription>{props.scanError}</AlertDescription>
-              </Alert>
-            ) : null}
-            <DeviceList
-              devices={bleList}
-              empty={t('noBle')}
-              selectedId={props.selectedId}
-              subtitle={(device) => device.btAddress}
-              stateFor={(device) =>
-                resolveLinkState({
-                  printerId: device.id,
-                  printers: bleList,
-                  usbDevices: props.usbDevices,
-                  sppPorts: props.sppPorts,
-                  bleDevices: props.bleDevices,
-                })
-              }
-              onSelect={(device) => props.onSelect(device, bleBindingExtra(device))}
-            />
+            <details className="rounded-lg border border-white/5 bg-ink-850/40 px-3 py-2 text-ui-xs text-ink-400">
+              <summary className="cursor-pointer select-none text-ink-300">{t('bleProtocolNotes')}</summary>
+              <p className="mt-2">{t('protocol7Unimplemented')}</p>
+            </details>
           </TabsContent>
         </Tabs>
       </TabsContent>
     </Tabs>
-  );
-}
-
-function DeviceList(props: {
-  devices: PrinterInfo[];
-  empty: string;
-  selectedId: string;
-  subtitle?: (device: PrinterInfo) => string | undefined;
-  stateFor?: (device: PrinterInfo) => LinkState;
-  onSelect: (device: PrinterInfo) => void;
-}) {
-  const { t } = useI18n();
-  if (props.devices.length === 0) {
-    return <p className="text-sm text-muted-foreground">{props.empty}</p>;
-  }
-
-  return (
-    <ul className="divide-y rounded-md border">
-      {props.devices.map((device) => {
-        const state = props.stateFor?.(device) ?? linkStateFromDevice(device);
-        const subtitle = props.subtitle?.(device);
-        return (
-          <li key={device.id} className="flex items-center justify-between gap-3 p-3">
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate font-medium">{device.name}</p>
-                <ConnectionStatusBadge state={state} />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t(BACKEND_KEYS[device.backend])}
-                {subtitle ? ` · ${subtitle}` : ''}
-              </p>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant={props.selectedId === device.id ? 'default' : 'outline'}
-              onClick={() => props.onSelect(device)}
-            >
-              {props.selectedId === device.id ? t('selected') : t('select')}
-            </Button>
-          </li>
-        );
-      })}
-    </ul>
   );
 }

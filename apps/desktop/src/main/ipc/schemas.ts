@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PrintHistoryMetaSchema, TEMPLATE_MAX_PAGES, TemplatePageSchema } from '@thermalbridge/shared';
 
 export const PrintRequestSchema = z.object({
   width: z.number().int().positive(),
@@ -48,4 +49,30 @@ export const TestPrintRequestSchema = z.object({
 
 export const BleScanSchema = z.object({
   durationMs: z.number().int().positive().max(30_000),
+});
+
+const Uint8ArraySchema = z.custom<Uint8Array>((value) => value instanceof Uint8Array, {
+  message: 'data must be Uint8Array',
+});
+
+export const LibraryIdSchema = z.object({
+  id: z.string().min(1),
+});
+
+export const AddMediaSchema = z.object({
+  name: z.string().min(1),
+  mimeType: z.string().min(1),
+  data: Uint8ArraySchema,
+});
+
+export const AddHistorySchema = PrintHistoryMetaSchema.omit({ id: true, printedAt: true }).extend({
+  png: Uint8ArraySchema,
+});
+
+export const SaveTemplateSchema = z.object({
+  id: z.string().min(1).optional(),
+  name: z.string().min(1).max(80),
+  widthMm: z.number().positive(),
+  heightMm: z.number().positive(),
+  pages: z.array(TemplatePageSchema).min(1).max(TEMPLATE_MAX_PAGES),
 });

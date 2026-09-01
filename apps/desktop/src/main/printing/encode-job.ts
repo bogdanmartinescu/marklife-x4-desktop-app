@@ -1,6 +1,7 @@
 import { resolveRoute, type DiagnosticRouteId, type TransportKind } from '@thermalbridge/printer-profiles';
 import { ThermalBridgeError, type PrinterBackend } from '@thermalbridge/shared';
 import {
+  buildPhomemoM110Job,
   buildPrintJob,
   encodeX4BluetoothJob,
   ProtocolUnimplementedError,
@@ -48,6 +49,21 @@ export async function encodeJobForRoute(options: {
 
   if (route.protocol === 'tspl') {
     return buildPrintJob(options.tspl);
+  }
+
+  if (route.protocol === 'phomemo-m110') {
+    return buildPhomemoM110Job({
+      image: options.image,
+      widthMm: options.tspl.widthMm,
+      heightMm: options.tspl.heightMm,
+      dpi: options.tspl.dpi,
+      density: options.tspl.density,
+      speed: options.tspl.speed,
+      media: options.tspl.media,
+      ...(options.tspl.transform !== undefined ? { transform: options.tspl.transform } : {}),
+      ...(options.tspl.dither !== undefined ? { dither: options.tspl.dither } : {}),
+      ...(options.tspl.threshold !== undefined ? { threshold: options.tspl.threshold } : {}),
+    });
   }
 
   if (

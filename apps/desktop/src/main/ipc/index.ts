@@ -9,22 +9,29 @@ import {
   IpcChannel,
   ThermalBridgeError,
   type AppSettings,
+  type LabelTemplate,
+  type LabelTemplateMeta,
+  type MediaFileMeta,
+  type MediaFileResult,
   type OpenFileResult,
   type PrinterBackend,
   type PrinterInfo,
+  type PrintHistoryMeta,
   type PrintResult,
   type SystemDiagnostics,
 } from '@thermalbridge/shared';
+import { selectPrintableProfile, type TransportKind } from '@thermalbridge/printer-profiles';
 import { type MediaSettings, type RgbaImage } from '@thermalbridge/thermal-core';
 import type { Logger } from '../logger.js';
 import { jobTempDir, logsPath } from '../paths.js';
+import { LibraryStore } from '../library/store.js';
 import { encodeJobForRoute } from '../printing/encode-job.js';
 import { inferTransport } from '../printing/infer-transport.js';
 import { writeJobFile } from '../printing/job-writer.js';
 import { buildTestPattern } from '../printing/test-pattern.js';
 import type { BridgeManager } from '../printing/bridge-manager.js';
 import type { SettingsStore } from '../settings/store.js';
-import { BleScanSchema, PrintRequestSchema, TestPrintRequestSchema } from './schemas.js';
+import { AddHistorySchema, AddMediaSchema, BleScanSchema, LibraryIdSchema, PrintRequestSchema, SaveTemplateSchema, TestPrintRequestSchema } from './schemas.js';
 import { openBluetoothSettings } from '../bluetooth/open-settings.js';
 
 const lastPrint: { current: PrintResult | null } = { current: null };
@@ -32,10 +39,11 @@ const lastPrint: { current: PrintResult | null } = { current: null };
 export function registerIpc(options: {
   bridge: BridgeManager;
   settings: SettingsStore;
+  library: LibraryStore;
   logger: Logger;
   appVersion: string;
 }): void {
-  const { bridge, settings, logger, appVersion } = options;
+  const { bridge, settings, library, logger, appVersion } = options;
 
   ipcMain.handle(IpcChannel.PRINTERS_LIST, async (): Promise<PrinterInfo[]> => {
     return await listPrinters(bridge, settings);
@@ -127,9 +135,22 @@ export function registerIpc(options: {
       },
     });
 
-    const result = await submitJob(bridge, settings, request.printerId, request.jobName, bytes);
+    const extras = bleWriteExtras(route);
+    const copies = route.profileId === 'phomemo-m110' ? request.copies : 1;
+    let result: PrintResult | undefined;
+    for (let index = 0; index < copies; index += 1) {
+      result = await submitJob(bridge, settings, request.printerId, request.jobName, bytes, extras);
+    }
+    if (!result) {
+      throw new ThermalBridgeError('PRINT_WRITE_FAILED', 'Print produced no result');
+    }
     lastPrint.current = result;
-    logger.info('print submitted', { jobId: result.jobId, bytes: bytes.length });
+    logger.info('print submitted', {
+      jobId: result.jobId,
+      bytes: bytes.length,
+      profileId: route.profileId,
+      transport: route.transport,
+    });
     return result;
   });
 
@@ -161,7 +182,14 @@ export function registerIpc(options: {
         dither: 'threshold',
       },
     });
-    const result = await submitJob(bridge, settings, request.printerId, 'ThermalBridge test page', bytes);
+    const result = await submitJob(
+      bridge,
+      settings,
+      request.printerId,
+      'ThermalBridge test page',
+      bytes,
+      bleWriteExtras(route),
+    );
     lastPrint.current = result;
     return result;
   });
@@ -241,6 +269,56 @@ export function registerIpc(options: {
     const data = new Uint8Array(await readFile(filePath));
     return { name: filePath.split(/[\\/]/).pop() ?? 'label', mimeType, data };
   });
+
+  ipcMain.handle(IpcChannel.LIBRARY_MEDIA_LIST, (): MediaFileMeta[] => library.listMedia());
+
+  ipcMain.handle(IpcChannel.LIBRARY_MEDIA_ADD, (_event, raw: unknown): MediaFileMeta => {
+    const parsed = AddMediaSchema.parse(raw);
+    return library.addMedia(parsed.name, parsed.mimeType, parsed.data);
+  });
+
+  ipcMain.handle(IpcChannel.LIBRARY_MEDIA_GET, (_event, raw: unknown): MediaFileResult => {
+    const parsed = LibraryIdSchema.parse(raw);
+    return library.getMedia(parsed.id);
+  });
+
+  ipcMain.handle(IpcChannel.LIBRARY_MEDIA_REMOVE, (_event, raw: unknown): void => {
+    const parsed = LibraryIdSchema.parse(raw);
+    library.removeMedia(parsed.id);
+  });
+
+  ipcMain.handle(IpcChannel.LIBRARY_HISTORY_LIST, (): PrintHistoryMeta[] => library.listHistory());
+
+  ipcMain.handle(IpcChannel.LIBRARY_HISTORY_ADD, (_event, raw: unknown): PrintHistoryMeta => {
+    const parsed = AddHistorySchema.parse(raw);
+    return library.addHistory(parsed);
+  });
+
+  ipcMain.handle(IpcChannel.LIBRARY_HISTORY_GET, (_event, raw: unknown): Uint8Array => {
+    const parsed = LibraryIdSchema.parse(raw);
+    return library.getHistoryPng(parsed.id);
+  });
+
+  ipcMain.handle(IpcChannel.LIBRARY_HISTORY_REMOVE, (_event, raw: unknown): void => {
+    const parsed = LibraryIdSchema.parse(raw);
+    library.removeHistory(parsed.id);
+  });
+
+  ipcMain.handle(IpcChannel.LIBRARY_TEMPLATES_LIST, (): LabelTemplateMeta[] => library.listTemplates());
+
+  ipcMain.handle(IpcChannel.LIBRARY_TEMPLATES_SAVE, (_event, raw: unknown): LabelTemplate => {
+    return library.saveTemplate(SaveTemplateSchema.parse(raw));
+  });
+
+  ipcMain.handle(IpcChannel.LIBRARY_TEMPLATES_GET, (_event, raw: unknown): LabelTemplate => {
+    const parsed = LibraryIdSchema.parse(raw);
+    return library.getTemplate(parsed.id);
+  });
+
+  ipcMain.handle(IpcChannel.LIBRARY_TEMPLATES_REMOVE, (_event, raw: unknown): void => {
+    const parsed = LibraryIdSchema.parse(raw);
+    library.removeTemplate(parsed.id);
+  });
 }
 
 async function listPrinters(bridge: BridgeManager, settings: SettingsStore): Promise<PrinterInfo[]> {
@@ -292,6 +370,7 @@ async function submitJob(
   printerId: string,
   jobName: string,
   bytes: Uint8Array,
+  extras: { btWriteMode?: string } = {},
 ): Promise<PrintResult> {
   const binding = settings.get().bindings.find((item) => item.printerId === printerId);
   const printers = await safeList(bridge, 'printers.list');
@@ -317,6 +396,12 @@ async function submitJob(
   assignOptional(params, 'btAddress', binding?.btAddress);
   assignOptional(params, 'btServiceUuid', binding?.btServiceUuid);
   assignOptional(params, 'btTxCharUuid', binding?.btTxCharUuid);
+  assignOptional(params, 'btWriteMode', extras.btWriteMode);
+  assignOptional(
+    params,
+    'btLocalName',
+    binding?.displayName ?? discovered?.name,
+  );
 
   try {
     await bridge.request('printer.printRawFile', params);
@@ -347,15 +432,31 @@ function mediaFromRequest(request: z.infer<typeof PrintRequestSchema>): MediaSet
   }
 }
 
+function bleWriteExtras(route: { profileId: string; transport: PrinterBackend }): {
+  btWriteMode?: string;
+} {
+  if (route.profileId === 'phomemo-m110' && route.transport === 'bluetooth-ble') {
+    return { btWriteMode: 'phomemo-m110' };
+  }
+  return {};
+}
+
 function routeContext(
   settings: SettingsStore,
   printerId: string,
   profileId?: string,
 ): { profileId: string; transport: PrinterBackend } {
   const binding = settings.get().bindings.find((item) => item.printerId === printerId);
+  const transport = inferTransport(printerId, binding?.backend);
   return {
-    profileId: profileId ?? binding?.profileId ?? 'marklife-x4',
-    transport: inferTransport(printerId, binding?.backend),
+    profileId: selectPrintableProfile({
+      transport: transport as TransportKind,
+      ...(profileId !== undefined ? { requestedModelId: profileId } : {}),
+      ...(binding !== undefined
+        ? { boundModelId: binding.profileId, deviceName: binding.displayName }
+        : {}),
+    }),
+    transport,
   };
 }
 

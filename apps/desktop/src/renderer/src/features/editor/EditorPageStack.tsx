@@ -11,6 +11,7 @@ interface EditorPageStackProps {
   selectedPageId: string;
   selectedId: string | null;
   sourceUrl: string | null;
+  sourceUrls: Readonly<Record<string, string>>;
   widthMm: number;
   heightMm: number;
   pageWidth: number;
@@ -86,7 +87,7 @@ export function EditorPageStack(props: EditorPageStackProps) {
                     onPointerDown={() => props.onSelectPage(page.id)}
                   >
                     <LabelCanvas
-                      sourceUrl={page.hasSource ? props.sourceUrl : null}
+                      sourceUrl={page.hasSource ? (props.sourceUrls[page.id] ?? props.sourceUrl) : null}
                       contentBox={page.hasSource ? page.contentBox : null}
                       overlays={page.overlays}
                       selectedId={selected ? props.selectedId : null}

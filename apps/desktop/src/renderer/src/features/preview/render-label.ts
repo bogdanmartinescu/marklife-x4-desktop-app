@@ -1,6 +1,7 @@
 import { computeFitRect, mmToDots, type FitMode, type Rotation } from '@thermalbridge/thermal-core';
 import { bytesToBlob } from '../import/source-bytes.js';
-import { contentBoxToRect, type ContentBox } from './content-placement.js';
+import { type ContentBox } from './content-placement.js';
+import { mmRectToDots } from '../editor/image-fit.js';
 import { renderPdfPage } from './pdf.js';
 import { intrinsicSize } from './source-size.js';
 
@@ -65,7 +66,7 @@ export function renderLabelCanvas(options: {
   const rect =
     options.contentBox === undefined
       ? computeFitRect(size.width, size.height, targetW, targetH, options.fitMode)
-      : contentBoxToRect(options.contentBox, options.dpi);
+      : mmRectToDots(options.contentBox, options.widthMm, options.heightMm, targetW, targetH);
   const canvas = document.createElement('canvas');
   canvas.width = targetW;
   canvas.height = targetH;

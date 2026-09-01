@@ -12,6 +12,18 @@ export const IpcChannel = {
   DIAGNOSTICS_SYSTEM: 'diagnostics:system',
   DIAGNOSTICS_EXPORT: 'diagnostics:export',
   SOURCES_OPEN: 'sources:open',
+  LIBRARY_MEDIA_LIST: 'library:media:list',
+  LIBRARY_MEDIA_ADD: 'library:media:add',
+  LIBRARY_MEDIA_GET: 'library:media:get',
+  LIBRARY_MEDIA_REMOVE: 'library:media:remove',
+  LIBRARY_HISTORY_LIST: 'library:history:list',
+  LIBRARY_HISTORY_ADD: 'library:history:add',
+  LIBRARY_HISTORY_GET: 'library:history:get',
+  LIBRARY_HISTORY_REMOVE: 'library:history:remove',
+  LIBRARY_TEMPLATES_LIST: 'library:templates:list',
+  LIBRARY_TEMPLATES_SAVE: 'library:templates:save',
+  LIBRARY_TEMPLATES_GET: 'library:templates:get',
+  LIBRARY_TEMPLATES_REMOVE: 'library:templates:remove',
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];

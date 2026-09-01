@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PREVIEW_CHROME_INSETS,
   PREVIEW_ZOOM_DEFAULT,
   PREVIEW_ZOOM_MAX,
   PREVIEW_ZOOM_MIN,
@@ -8,6 +9,7 @@ import {
   previewLabelSize,
   previewDocumentSize,
   previewStageSize,
+  previewVisibleWell,
 } from './preview-zoom.js';
 
 describe('clampPreviewZoom', () => {
@@ -129,6 +131,35 @@ describe('previewStageSize', () => {
         padding: 32,
       }),
     ).toEqual({ width: 832, height: 1232 });
+  });
+});
+
+describe('previewVisibleWell', () => {
+  it('uses a fit factor instead of subtracting side chrome', () => {
+    expect(PREVIEW_CHROME_INSETS.left).toBe(0);
+    expect(PREVIEW_CHROME_INSETS.right).toBe(0);
+    expect(previewVisibleWell(1000, 800)).toEqual({
+      width: Math.floor(1000 * PREVIEW_CHROME_INSETS.fit),
+      height: Math.floor(800 * PREVIEW_CHROME_INSETS.fit),
+    });
+  });
+
+  it('keeps A4 inside the well at 100% zoom', () => {
+    const well = previewVisibleWell(1400, 900);
+    const size = previewLabelSize({
+      wellWidth: well.width,
+      wellHeight: well.height,
+      widthMm: 210,
+      heightMm: 297,
+      zoomPercent: 100,
+    });
+    expect(size.height).toBeLessThanOrEqual(well.height);
+    expect(size.width).toBeLessThan(well.width + 0.01);
+    expect(size.height).toBeGreaterThan(500);
+  });
+
+  it('returns empty until the well is measured', () => {
+    expect(previewVisibleWell(0, 800)).toEqual({ width: 0, height: 0 });
   });
 });
 

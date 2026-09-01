@@ -2,6 +2,30 @@ export const PREVIEW_ZOOM_MIN = 0;
 export const PREVIEW_ZOOM_MAX = 200;
 export const PREVIEW_ZOOM_DEFAULT = 100;
 
+/** Breathing room inside the preview well. Dock and print live in sibling columns. */
+export const PREVIEW_CHROME_INSETS = {
+  left: 0,
+  right: 0,
+  top: 0,
+  bottom: 0,
+  fit: 0.88,
+} as const;
+
+export function previewVisibleWell(
+  wellWidth: number,
+  wellHeight: number,
+): { width: number; height: number } {
+  if (wellWidth <= 0 || wellHeight <= 0) {
+    return { width: 0, height: 0 };
+  }
+  const innerWidth = wellWidth - PREVIEW_CHROME_INSETS.left - PREVIEW_CHROME_INSETS.right;
+  const innerHeight = wellHeight - PREVIEW_CHROME_INSETS.top - PREVIEW_CHROME_INSETS.bottom;
+  return {
+    width: Math.max(0, Math.floor(innerWidth * PREVIEW_CHROME_INSETS.fit)),
+    height: Math.max(0, Math.floor(innerHeight * PREVIEW_CHROME_INSETS.fit)),
+  };
+}
+
 export function clampPreviewZoom(value: number): number {
   if (!Number.isFinite(value)) {
     return PREVIEW_ZOOM_DEFAULT;

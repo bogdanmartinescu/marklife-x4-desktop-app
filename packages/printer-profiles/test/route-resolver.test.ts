@@ -150,4 +150,18 @@ describe('resolveRoute', () => {
     });
     expect(result.kind).toBe('unsupported');
   });
+
+  it('selects Phomemo M110 ESC/POS over BLE', () => {
+    const result = resolveRoute({
+      modelId: 'phomemo-m110',
+      transport: 'bluetooth-ble',
+    });
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') {
+      return;
+    }
+    expect(result.route.protocol).toBe('phomemo-m110');
+    expect(result.route.codec).toBe('raw-mono-1bpp');
+    expect(result.route.session).toBe('phomemo-ble-paced');
+  });
 });

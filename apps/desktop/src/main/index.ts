@@ -6,11 +6,13 @@ import { shouldAllowRendererNavigation } from './navigation.js';
 import { ignoreClosedPipe, isClosedPipeError, writeLine } from './pipe-errors.js';
 import {
   jobTempDir,
+  libraryDir,
   logsPath,
   resolvePreloadPath,
   resolvePrintbridgePath,
   settingsPath,
 } from './paths.js';
+import { LibraryStore } from './library/store.js';
 import { BridgeManager } from './printing/bridge-manager.js';
 import { SettingsStore } from './settings/store.js';
 
@@ -29,7 +31,7 @@ function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
     width: 1440,
     height: 900,
-    minWidth: 1100,
+    minWidth: 1240,
     minHeight: 720,
     title: 'ThermalBridge',
     show: false,
@@ -84,12 +86,14 @@ function createWindow(): BrowserWindow {
 app.whenReady().then(() => {
   const logger = createLogger('main', logsPath());
   const settings = new SettingsStore(settingsPath());
+  const library = new LibraryStore(libraryDir());
   const bridge = new BridgeManager(resolvePrintbridgePath(), jobTempDir(), logger);
   bridge.start();
 
   registerIpc({
     bridge,
     settings,
+    library,
     logger,
     appVersion: app.getVersion(),
   });

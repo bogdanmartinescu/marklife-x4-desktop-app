@@ -19,6 +19,10 @@ export {
 export {
   type ThermalBridgeAPI,
   type OpenFileResult,
+  type AddMediaInput,
+  type AddPrintHistoryInput,
+  type SaveLabelTemplateInput,
+  type MediaFileResult,
 } from './api.js';
 export {
   PrinterBindingSchema,
@@ -31,3 +35,26 @@ export {
   type AppSettings,
   type AppSettingsPatch,
 } from './settings.js';
+export {
+  MediaFileMetaSchema,
+  PrintHistoryMetaSchema,
+  LabelTemplateSchema,
+  LabelTemplateMetaSchema,
+  OverlaySnapshotSchema,
+  TemplatePageSchema,
+  MEDIA_MIME_TYPES,
+  LIBRARY_MAX_ITEMS,
+  LIBRARY_MAX_BYTES,
+  TEMPLATE_MAX_ITEMS,
+  TEMPLATE_MAX_BYTES,
+  TEMPLATE_MAX_PAGES,
+  isSafeLibraryId,
+  isMediaMimeType,
+  type MediaFileMeta,
+  type MediaMimeType,
+  type PrintHistoryMeta,
+  type LabelTemplate,
+  type LabelTemplateMeta,
+  type OverlaySnapshot,
+  type TemplatePage,
+} from './library.js';

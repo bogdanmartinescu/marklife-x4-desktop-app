@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Group, Image as KonvaImage, Layer, Line, Rect, Stage, Text, Transformer } from 'react-konva';
+import { Arrow, Ellipse, Group, Image as KonvaImage, Layer, Line, Path, Rect, Stage, Text, Transformer } from 'react-konva';
 import type Konva from 'konva';
 import type { ContentBox } from '../preview/content-placement.js';
 import { loadHtmlImage, renderBarcodeCanvas, renderQrCanvas } from './codes.js';
+import { resolveFieldText } from './field-value.js';
+import { getPrintIcon } from './icon-catalog.js';
+import { fitImageInRect } from './image-fit.js';
 import type { OverlayElement } from './overlay.js';
+import { parseTableCells, tableCellBounds } from './table-cells.js';
 
 interface LabelCanvasProps {
   sourceUrl: string | null;
@@ -149,6 +153,22 @@ function OverlayNode(props: {
     );
   }
 
+  if (overlay.kind === 'circle') {
+    return (
+      <Group ref={attach} {...common}>
+        <Ellipse
+          x={width / 2}
+          y={height / 2}
+          radiusX={width / 2}
+          radiusY={height / 2}
+          fill={overlay.fill === 'white' ? '#ffffff' : '#111111'}
+          stroke="#111111"
+          strokeWidth={Math.max(1, mmToStage(overlay.strokeMm, props.widthMm, props.stageWidth))}
+        />
+      </Group>
+    );
+  }
+
   if (overlay.kind === 'line') {
     return (
       <Group ref={attach} {...common}>
@@ -162,68 +182,266 @@ function OverlayNode(props: {
     );
   }
 
+  if (overlay.kind === 'arrow') {
+    const pointer = Math.min(width * 0.28, height * 0.9);
+    return (
+      <Group ref={attach} {...common}>
+        <Arrow
+          points={[0, height / 2, width, height / 2]}
+          stroke="#111111"
+          fill="#111111"
+          strokeWidth={Math.max(1, mmToStage(overlay.strokeMm, props.heightMm, props.stageHeight))}
+          pointerLength={pointer}
+          pointerWidth={pointer * 0.9}
+          hitStrokeWidth={12}
+        />
+      </Group>
+    );
+  }
+
+  if (overlay.kind === 'field') {
+    return (
+      <Text
+        ref={attach}
+        {...common}
+        text={resolveFieldText(overlay, { now: new Date(), copyIndex: 0 })}
+        fontSize={Math.max(8, fontSize)}
+        fontFamily={overlay.fontFamily}
+        fontStyle={overlay.fontStyle || 'normal'}
+        align={overlay.align}
+        fill={overlay.fill === 'white' ? '#ffffff' : '#111111'}
+      />
+    );
+  }
+
+  if (overlay.kind === 'table') {
+    return (
+      <TableNode
+        overlay={overlay}
+        common={common}
+        attach={attach}
+        width={width}
+        height={height}
+        fontSize={fontSize}
+        strokeWidth={Math.max(1, mmToStage(overlay.strokeMm, props.widthMm, props.stageWidth))}
+      />
+    );
+  }
+
+  if (overlay.kind === 'icon') {
+    return (
+      <IconNode overlay={overlay} common={common} attach={attach} width={width} height={height} />
+    );
+  }
+
   if (overlay.kind === 'qr') {
     return (
-      <QrNode overlay={overlay} common={common} attach={attach} />
+      <QrNode overlay={overlay} common={common} attach={attach} width={width} height={height} />
     );
   }
 
   if (overlay.kind === 'barcode') {
     return (
-      <BarcodeNode overlay={overlay} common={common} attach={attach} height={height} />
+      <BarcodeNode
+        overlay={overlay}
+        common={common}
+        attach={attach}
+        width={width}
+        height={height}
+      />
     );
   }
 
-  return <ImageNode overlay={overlay} common={common} attach={attach} />;
+  return <ImageNode overlay={overlay} common={common} attach={attach} width={width} height={height} />;
+}
+
+function FittedImage(props: {
+  image: HTMLImageElement | null;
+  width: number;
+  height: number;
+  smoothing?: boolean;
+}) {
+  const hit = (
+    <Rect width={props.width} height={props.height} fill="rgba(255,255,255,0.01)" listening />
+  );
+  if (!props.image) {
+    return (
+      <Group>
+        {hit}
+        <Rect
+          width={props.width}
+          height={props.height}
+          fill="#f4f4f4"
+          stroke="#111111"
+          dash={[4, 4]}
+          listening={false}
+        />
+      </Group>
+    );
+  }
+  const fit = fitImageInRect(
+    props.image.naturalWidth,
+    props.image.naturalHeight,
+    props.width,
+    props.height,
+  );
+  return (
+    <Group>
+      {hit}
+      <KonvaImage
+        image={props.image}
+        x={fit.x}
+        y={fit.y}
+        width={fit.width}
+        height={fit.height}
+        listening={false}
+        imageSmoothingEnabled={props.smoothing ?? false}
+      />
+    </Group>
+  );
 }
 
 function QrNode(props: {
   overlay: OverlayElement;
   common: Record<string, unknown>;
   attach: (node: Konva.Node | null) => void;
+  width: number;
+  height: number;
 }) {
   const image = useCanvasImage(
     () => renderQrCanvas(props.overlay.content, props.overlay.qrEcl),
     `${props.overlay.id}:${props.overlay.content}:${props.overlay.qrEcl}`,
   );
-  if (!image) {
-    return <Rect ref={props.attach} {...props.common} fill="#f4f4f4" stroke="#111111" dash={[4, 4]} />;
-  }
-  return <KonvaImage ref={props.attach} {...props.common} image={image} />;
+  return (
+    <Group ref={props.attach} {...props.common}>
+      <FittedImage image={image} width={props.width} height={props.height} />
+    </Group>
+  );
 }
 
 function BarcodeNode(props: {
   overlay: OverlayElement;
   common: Record<string, unknown>;
   attach: (node: Konva.Node | null) => void;
+  width: number;
   height: number;
 }) {
+  const destWidth = Math.max(8, Math.round(props.width));
+  const destHeight = Math.max(8, Math.round(props.height));
   const image = useCanvasImage(
     () =>
       renderBarcodeCanvas({
         content: props.overlay.content,
         format: props.overlay.barcodeFormat,
         displayValue: props.overlay.barcodeDisplayValue,
-        height: Math.max(40, props.height),
+        destWidth,
+        destHeight,
       }),
-    `${props.overlay.id}:${props.overlay.content}:${props.overlay.barcodeFormat}:${String(props.overlay.barcodeDisplayValue)}:${props.height}`,
+    `${props.overlay.id}:${props.overlay.content}:${props.overlay.barcodeFormat}:${String(props.overlay.barcodeDisplayValue)}:${destWidth}x${destHeight}`,
   );
-  if (!image) {
+  return (
+    <Group ref={props.attach} {...props.common}>
+      <FittedImage image={image} width={props.width} height={props.height} />
+    </Group>
+  );
+}
+
+function IconNode(props: {
+  overlay: OverlayElement;
+  common: Record<string, unknown>;
+  attach: (node: Konva.Node | null) => void;
+  width: number;
+  height: number;
+}) {
+  const icon = getPrintIcon(props.overlay.iconId);
+  if (!icon) {
     return <Rect ref={props.attach} {...props.common} fill="#f4f4f4" stroke="#111111" dash={[4, 4]} />;
   }
-  return <KonvaImage ref={props.attach} {...props.common} image={image} />;
+  const scale = Math.min(props.width, props.height) / icon.viewBox;
+  const ox = (props.width - icon.viewBox * scale) / 2;
+  const oy = (props.height - icon.viewBox * scale) / 2;
+  return (
+    <Group ref={props.attach} {...props.common}>
+      <Rect width={props.width} height={props.height} fill="transparent" />
+      <Group x={ox} y={oy} scaleX={scale} scaleY={scale} listening={false}>
+        {icon.fill.map((d, index) => (
+          <Path key={`f-${String(index)}`} data={d} fill="#111111" fillRule="evenodd" />
+        ))}
+        {icon.stroke.map((d, index) => (
+          <Path
+            key={`s-${String(index)}`}
+            data={d}
+            fillEnabled={false}
+            stroke="#111111"
+            strokeWidth={icon.strokeWidth}
+            lineJoin="round"
+            lineCap="round"
+          />
+        ))}
+      </Group>
+    </Group>
+  );
+}
+
+function TableNode(props: {
+  overlay: OverlayElement;
+  common: Record<string, unknown>;
+  attach: (node: Konva.Node | null) => void;
+  width: number;
+  height: number;
+  fontSize: number;
+  strokeWidth: number;
+}) {
+  const cells = parseTableCells(props.overlay.text, props.overlay.tableRows, props.overlay.tableCols);
+  const bounds = tableCellBounds(props.width, props.height, props.overlay.tableRows, props.overlay.tableCols);
+  return (
+    <Group ref={props.attach} {...props.common}>
+      <Rect width={props.width} height={props.height} stroke="#111111" strokeWidth={props.strokeWidth} />
+      {bounds.map((cell) => (
+        <Rect
+          key={`${String(cell.row)}-${String(cell.col)}`}
+          x={cell.x}
+          y={cell.y}
+          width={cell.width}
+          height={cell.height}
+          stroke="#111111"
+          strokeWidth={props.strokeWidth}
+        />
+      ))}
+      {bounds.map((cell) => (
+        <Text
+          key={`t-${String(cell.row)}-${String(cell.col)}`}
+          x={cell.x + 2}
+          y={cell.y}
+          width={Math.max(1, cell.width - 4)}
+          height={cell.height}
+          text={cells[cell.row]?.[cell.col] ?? ''}
+          fontSize={Math.max(8, Math.min(props.fontSize, cell.height * 0.55))}
+          fontFamily={props.overlay.fontFamily}
+          fontStyle={props.overlay.fontStyle || 'normal'}
+          align={props.overlay.align}
+          verticalAlign="middle"
+          fill="#111111"
+          listening={false}
+        />
+      ))}
+    </Group>
+  );
 }
 
 function ImageNode(props: {
   overlay: OverlayElement;
   common: Record<string, unknown>;
   attach: (node: Konva.Node | null) => void;
+  width: number;
+  height: number;
 }) {
   const image = useHtmlImage(props.overlay.src || null);
-  if (!image) {
-    return <Rect ref={props.attach} {...props.common} fill="#f4f4f4" stroke="#111111" dash={[4, 4]} />;
-  }
-  return <KonvaImage ref={props.attach} {...props.common} image={image} />;
+  return (
+    <Group ref={props.attach} {...props.common}>
+      <FittedImage image={image} width={props.width} height={props.height} smoothing />
+    </Group>
+  );
 }
 
 export function LabelCanvas(props: LabelCanvasProps) {
@@ -265,6 +483,18 @@ export function LabelCanvas(props: LabelCanvasProps) {
         yMm,
         widthMm: Math.max(4, widthMm),
         heightMm: Math.max(4, heightMm),
+      });
+      return;
+    }
+    const overlay = props.overlays.find((item) => item.id === id);
+    if (overlay?.kind === 'qr') {
+      const size = Math.max(4, Math.max(widthMm, heightMm));
+      props.onOverlayChange(id, {
+        xMm,
+        yMm,
+        widthMm: size,
+        heightMm: size,
+        rotation,
       });
       return;
     }
@@ -346,7 +576,23 @@ export function LabelCanvas(props: LabelCanvasProps) {
         <Transformer
           ref={transformerRef}
           rotateEnabled
-          enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+          keepRatio={props.overlays.find((item) => item.id === props.selectedId)?.kind === 'qr'}
+          enabledAnchors={[
+            'top-left',
+            'top-center',
+            'top-right',
+            'middle-left',
+            'middle-right',
+            'bottom-left',
+            'bottom-center',
+            'bottom-right',
+          ]}
+          boundBoxFunc={(oldBox, newBox) => {
+            if (Math.abs(newBox.width) < 8 || Math.abs(newBox.height) < 8) {
+              return oldBox;
+            }
+            return newBox;
+          }}
         />
       </Layer>
     </Stage>

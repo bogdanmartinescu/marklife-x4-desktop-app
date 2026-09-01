@@ -28,6 +28,8 @@ pub struct PrinterInfo {
     pub bt_address: Option<String>,
     #[serde(rename = "btServiceUuid", skip_serializing_if = "Option::is_none")]
     pub bt_service_uuid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rssi: Option<i16>,
 }
 
 pub fn list_os_printers() -> Result<Vec<PrinterInfo>, BridgeError> {
@@ -88,6 +90,8 @@ pub fn print_config_from_params(params: &Value) -> Result<PrintConfig, BridgeErr
         bt_address: optional_string(params, "btAddress"),
         bt_service_uuid: optional_string(params, "btServiceUuid"),
         bt_tx_char_uuid: optional_string(params, "btTxCharUuid"),
+        bt_write_mode: optional_string(params, "btWriteMode"),
+        bt_local_name: optional_string(params, "btLocalName"),
     })
 }
 

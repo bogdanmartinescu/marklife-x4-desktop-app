@@ -54,6 +54,9 @@ export function resolveRoute(input: ResolveRouteInput): ResolveRouteResult {
       },
     };
   }
+  if (input.modelId === 'phomemo-m110') {
+    return resolvePhomemoM110(input);
+  }
   return { kind: 'unsupported', reason: `No routes registered for ${input.modelId}` };
 }
 
@@ -159,4 +162,36 @@ function resolveP50(input: ResolveRouteInput): ResolveRouteResult {
     reason:
       'P50 print routes are not implemented yet. Protocol 3 must be reconstructed before wiring this model.',
   };
+}
+
+const PHOMEMO_M110_BLE: PrinterRoute = {
+  id: 'phomemo-m110-ble',
+  modelId: 'phomemo-m110',
+  transport: 'bluetooth-ble',
+  protocol: 'phomemo-m110',
+  codec: 'raw-mono-1bpp',
+  session: 'phomemo-ble-paced',
+  status: 'candidate',
+};
+
+function resolvePhomemoM110(input: ResolveRouteInput): ResolveRouteResult {
+  switch (input.transport) {
+    case 'bluetooth-ble':
+      return { kind: 'resolved', route: PHOMEMO_M110_BLE };
+    case 'usb':
+      return {
+        kind: 'resolved',
+        route: {
+          ...PHOMEMO_M110_BLE,
+          id: 'phomemo-m110-usb',
+          transport: 'usb',
+          session: 'raw-stream',
+        },
+      };
+    default:
+      return {
+        kind: 'unsupported',
+        reason: `Phomemo M110 has no ${input.transport} route. Use Bluetooth LE (or USB RAW).`,
+      };
+  }
 }

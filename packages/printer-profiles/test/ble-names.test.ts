@@ -8,6 +8,9 @@ describe('advertisedNameMatches', () => {
     expect(advertisedNameMatches('X4')).toBe(true);
     expect(advertisedNameMatches('Marklife X4')).toBe(true);
     expect(advertisedNameMatches('D210')).toBe(true);
+    expect(advertisedNameMatches('M110')).toBe(true);
+    expect(advertisedNameMatches('Phomemo M110')).toBe(true);
+    expect(advertisedNameMatches('Q002E0CP0670069')).toBe(true);
     expect(advertisedNameMatches('AirPods Pro')).toBe(false);
     expect(advertisedNameMatches('')).toBe(false);
   });

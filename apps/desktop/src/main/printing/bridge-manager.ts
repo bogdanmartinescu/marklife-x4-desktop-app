@@ -55,12 +55,13 @@ export class BridgeManager {
     const line = `${JSON.stringify({ id, method, params })}\n`;
 
     return await new Promise<T>((resolve, reject) => {
+      const timeoutMs = method === 'printer.printRawFile' ? 120_000 : 45_000;
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(
           new ThermalBridgeError('PRINTBRIDGE_PROTOCOL_ERROR', `printbridge timed out for ${method}`),
         );
-      }, 45_000);
+      }, timeoutMs);
       this.pending.set(id, {
         resolve: (value) => resolve(value as T),
         reject,
@@ -216,6 +217,7 @@ function isKnown(
     'INVALID_BITMAP',
     'PDF_RENDER_FAILED',
     'FILE_UNSUPPORTED',
+    'LIBRARY_NOT_FOUND',
     'TCP_CONNECTION_FAILED',
     'PRINT_WRITE_FAILED',
     'USB_DRIVER_CONFLICT',

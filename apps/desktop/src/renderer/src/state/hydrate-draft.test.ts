@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_D210_PRINT_SETTINGS } from '@thermalbridge/printer-profiles';
 import { DEFAULT_APP_SETTINGS } from '@thermalbridge/shared';
 import type { PrintDraft } from './types.js';
 import { applySettingsToDraft } from './hydrate-draft.js';
@@ -26,6 +27,7 @@ const DRAFT: PrintDraft = {
   offsetXmm: 0,
   offsetYmm: 0,
   diagnosticTsplOverSpp: false,
+  d210: DEFAULT_D210_PRINT_SETTINGS,
 };
 
 describe('applySettingsToDraft', () => {
@@ -41,5 +43,29 @@ describe('applySettingsToDraft', () => {
     expect(next.widthMm).toBe(50);
     expect(next.heightMm).toBe(30);
     expect(next.printerId).toBe(DEFAULT_APP_SETTINGS.lastPrinterId ?? '');
+  });
+
+  it('restores the bound printer profile instead of leaving the X4 default', () => {
+    const next = applySettingsToDraft(
+      DRAFT,
+      {
+        ...DEFAULT_APP_SETTINGS,
+        lastPrinterId: 'bt-ble:0516f47a-2399-c6af-39e3-4a733dcc83a3',
+        bindings: [
+          {
+            printerId: 'bt-ble:0516f47a-2399-c6af-39e3-4a733dcc83a3',
+            profileId: 'phomemo-m110',
+            backend: 'bluetooth-ble',
+            systemName: 'Q199E4BC7300007',
+            displayName: 'Q199E4BC7300007',
+          },
+        ],
+      },
+      { preserveLabelSize: true },
+    );
+    expect(next.printerId).toBe('bt-ble:0516f47a-2399-c6af-39e3-4a733dcc83a3');
+    expect(next.profileId).toBe('phomemo-m110');
+    expect(next.widthMm).toBe(50);
+    expect(next.heightMm).toBe(30);
   });
 });

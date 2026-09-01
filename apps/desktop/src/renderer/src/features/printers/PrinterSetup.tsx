@@ -49,7 +49,7 @@ export function PrinterSetup(props: PrinterSetupProps) {
   });
 
   return (
-    <Card className="mx-auto w-full max-w-3xl">
+    <Card className="mx-auto w-full max-w-3xl min-w-0">
       <CardHeader>
         <CardTitle>{t('setupTitle')}</CardTitle>
         <CardDescription>{t('setupDescription')}</CardDescription>

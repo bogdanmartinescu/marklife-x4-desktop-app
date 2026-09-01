@@ -1,8 +1,29 @@
-export type OverlayKind = 'text' | 'rect' | 'line' | 'qr' | 'barcode' | 'image';
+import { serializeTableCells } from './table-cells.js';
+
+export type OverlayKind =
+  | 'text'
+  | 'rect'
+  | 'line'
+  | 'qr'
+  | 'barcode'
+  | 'image'
+  | 'circle'
+  | 'arrow'
+  | 'icon'
+  | 'table'
+  | 'field';
 export type TextAlign = 'left' | 'center' | 'right';
 export type QrEcl = 'L' | 'M' | 'Q' | 'H';
 export type BarcodeFormat = 'CODE128' | 'CODE39' | 'EAN13' | 'UPC';
 export type FontStyle = '' | 'bold' | 'italic' | 'bold italic';
+export type DateFormat = 'iso' | 'eu' | 'us';
+export type FieldKind = 'date' | 'serial' | 'counter';
+
+export const FONT_FAMILIES = [
+  { id: 'sans', css: 'Inter Variable, Inter, sans-serif' },
+  { id: 'serif', css: 'serif' },
+  { id: 'mono', css: 'JetBrains Mono, monospace' },
+] as const;
 
 export interface OverlayElement {
   id: string;
@@ -24,13 +45,21 @@ export interface OverlayElement {
   barcodeFormat: BarcodeFormat;
   barcodeDisplayValue: boolean;
   src: string;
+  iconId: string;
+  tableRows: number;
+  tableCols: number;
+  fieldKind: FieldKind;
+  dateFormat: DateFormat;
+  serialStart: number;
+  serialStep: number;
+  serialPad: number;
 }
 
 const DEFAULTS: Omit<OverlayElement, 'id' | 'kind' | 'xMm' | 'yMm' | 'widthMm' | 'heightMm'> = {
   rotation: 0,
   text: '',
   fontSizeMm: 8,
-  fontFamily: 'sans-serif',
+  fontFamily: 'Inter Variable, Inter, sans-serif',
   fontStyle: '',
   align: 'left',
   fill: 'black',
@@ -40,11 +69,21 @@ const DEFAULTS: Omit<OverlayElement, 'id' | 'kind' | 'xMm' | 'yMm' | 'widthMm' |
   barcodeFormat: 'CODE128',
   barcodeDisplayValue: true,
   src: '',
+  iconId: 'warning',
+  tableRows: 2,
+  tableCols: 2,
+  fieldKind: 'date',
+  dateFormat: 'iso',
+  serialStart: 1,
+  serialStep: 1,
+  serialPad: 4,
 };
 
 export function createOverlayId(): string {
   return `el-${crypto.randomUUID()}`;
 }
+
+const MIN_OVERLAY_MM = 1;
 
 function clampPlacement(
   xMm: number,
@@ -54,14 +93,37 @@ function clampPlacement(
   labelWidthMm: number,
   labelHeightMm: number,
 ): { xMm: number; yMm: number; widthMm: number; heightMm: number } {
-  const width = Math.min(widthMm, labelWidthMm);
-  const height = Math.min(heightMm, labelHeightMm);
+  const width = Math.min(Math.max(MIN_OVERLAY_MM, widthMm), labelWidthMm);
+  const height = Math.min(Math.max(MIN_OVERLAY_MM, heightMm), labelHeightMm);
   return {
     xMm: Math.max(0, Math.min(xMm, labelWidthMm - width)),
     yMm: Math.max(0, Math.min(yMm, labelHeightMm - height)),
     widthMm: width,
     heightMm: height,
   };
+}
+
+export function placeOverlay(
+  overlay: OverlayElement,
+  patch: Partial<Pick<OverlayElement, 'xMm' | 'yMm' | 'widthMm' | 'heightMm'>>,
+  labelWidthMm: number,
+  labelHeightMm: number,
+): Pick<OverlayElement, 'xMm' | 'yMm' | 'widthMm' | 'heightMm'> {
+  let widthMm = patch.widthMm ?? overlay.widthMm;
+  let heightMm = patch.heightMm ?? overlay.heightMm;
+  if (overlay.kind === 'qr') {
+    const size = patch.widthMm ?? patch.heightMm ?? overlay.widthMm;
+    widthMm = size;
+    heightMm = size;
+  }
+  return clampPlacement(
+    patch.xMm ?? overlay.xMm,
+    patch.yMm ?? overlay.yMm,
+    widthMm,
+    heightMm,
+    labelWidthMm,
+    labelHeightMm,
+  );
 }
 
 export function createTextOverlay(labelWidthMm: number, labelHeightMm: number): OverlayElement {
@@ -114,7 +176,7 @@ export function createBarcodeOverlay(labelWidthMm: number, labelHeightMm: number
     ...DEFAULTS,
     id: createOverlayId(),
     kind: 'barcode',
-    ...clampPlacement(labelWidthMm * 0.1, labelHeightMm * 0.2, 50, 16, labelWidthMm, labelHeightMm),
+    ...clampPlacement(labelWidthMm * 0.05, labelHeightMm * 0.2, labelWidthMm * 0.9, 14, labelWidthMm, labelHeightMm),
     content: '1234567890',
     barcodeFormat: 'CODE128',
     barcodeDisplayValue: true,
@@ -144,6 +206,91 @@ export function createImageOverlay(
       labelHeightMm,
     ),
     src,
+  };
+}
+
+export function createCircleOverlay(labelWidthMm: number, labelHeightMm: number): OverlayElement {
+  const size = Math.min(18, labelWidthMm * 0.4, labelHeightMm * 0.4);
+  return {
+    ...DEFAULTS,
+    id: createOverlayId(),
+    kind: 'circle',
+    ...clampPlacement(
+      (labelWidthMm - size) / 2,
+      (labelHeightMm - size) / 2,
+      size,
+      size,
+      labelWidthMm,
+      labelHeightMm,
+    ),
+    fill: 'white',
+    strokeMm: 0.6,
+  };
+}
+
+export function createArrowOverlay(labelWidthMm: number, labelHeightMm: number): OverlayElement {
+  return {
+    ...DEFAULTS,
+    id: createOverlayId(),
+    kind: 'arrow',
+    ...clampPlacement(labelWidthMm * 0.1, labelHeightMm * 0.4, labelWidthMm * 0.7, 8, labelWidthMm, labelHeightMm),
+    strokeMm: 0.8,
+  };
+}
+
+export function createIconOverlay(
+  labelWidthMm: number,
+  labelHeightMm: number,
+  iconId: string,
+): OverlayElement {
+  const size = Math.min(16, labelWidthMm * 0.4, labelHeightMm * 0.5);
+  return {
+    ...DEFAULTS,
+    id: createOverlayId(),
+    kind: 'icon',
+    ...clampPlacement(
+      (labelWidthMm - size) / 2,
+      (labelHeightMm - size) / 2,
+      size,
+      size,
+      labelWidthMm,
+      labelHeightMm,
+    ),
+    iconId,
+  };
+}
+
+export function createTableOverlay(labelWidthMm: number, labelHeightMm: number): OverlayElement {
+  return {
+    ...DEFAULTS,
+    id: createOverlayId(),
+    kind: 'table',
+    ...clampPlacement(labelWidthMm * 0.08, labelHeightMm * 0.2, labelWidthMm * 0.84, 16, labelWidthMm, labelHeightMm),
+    fontSizeMm: 3,
+    tableRows: 2,
+    tableCols: 2,
+    text: serializeTableCells([
+      ['A', 'B'],
+      ['1', '2'],
+    ]),
+    strokeMm: 0.3,
+  };
+}
+
+export function createFieldOverlay(labelWidthMm: number, labelHeightMm: number): OverlayElement {
+  return {
+    ...DEFAULTS,
+    id: createOverlayId(),
+    kind: 'field',
+    ...clampPlacement(labelWidthMm * 0.1, labelHeightMm * 0.15, labelWidthMm * 0.8, 10, labelWidthMm, labelHeightMm),
+    text: '',
+    fontSizeMm: 5,
+    fontStyle: 'bold',
+    fieldKind: 'date',
+    dateFormat: 'iso',
+    serialStart: 1,
+    serialStep: 1,
+    serialPad: 4,
   };
 }
 

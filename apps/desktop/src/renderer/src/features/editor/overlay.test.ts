@@ -3,11 +3,17 @@ import { mmToDots } from '@thermalbridge/thermal-core';
 import { overlayDestRect } from './rasterize.js';
 import {
   centerOverlay,
+  placeOverlay,
+  createArrowOverlay,
   createBarcodeOverlay,
+  createCircleOverlay,
+  createFieldOverlay,
+  createIconOverlay,
   createImageOverlay,
   createLineOverlay,
   createQrOverlay,
   createRectOverlay,
+  createTableOverlay,
   createTextOverlay,
   duplicateOverlay,
   moveOverlayZ,
@@ -20,11 +26,13 @@ describe('overlayDestRect', () => {
     overlay.yMm = 20;
     overlay.widthMm = 40;
     overlay.heightMm = 8;
-    expect(overlayDestRect(overlay, 203)).toEqual({
-      x: mmToDots(10, 203),
-      y: mmToDots(20, 203),
-      width: mmToDots(40, 203),
-      height: mmToDots(8, 203),
+    expect(overlayDestRect(overlay, 203, { widthMm: 100, heightMm: 150 })).toEqual({
+      x: Math.round((10 / 100) * mmToDots(100, 203)),
+      y: Math.round((20 / 150) * mmToDots(150, 203)),
+      width:
+        Math.round((50 / 100) * mmToDots(100, 203)) - Math.round((10 / 100) * mmToDots(100, 203)),
+      height:
+        Math.round((28 / 150) * mmToDots(150, 203)) - Math.round((20 / 150) * mmToDots(150, 203)),
     });
   });
 });
@@ -55,6 +63,25 @@ describe('overlay factories', () => {
     expect(image.widthMm / image.heightMm).toBeCloseTo(2, 5);
   });
 
+  it('creates circle, arrow, icon, table, and field overlays', () => {
+    const circle = createCircleOverlay(40, 30);
+    const arrow = createArrowOverlay(40, 30);
+    const icon = createIconOverlay(40, 30, 'warning');
+    const table = createTableOverlay(40, 30);
+    const field = createFieldOverlay(40, 30);
+    expect(circle.kind).toBe('circle');
+    expect(circle.widthMm).toBe(circle.heightMm);
+    expect(arrow.kind).toBe('arrow');
+    expect(icon.kind).toBe('icon');
+    expect(icon.iconId).toBe('warning');
+    expect(table.kind).toBe('table');
+    expect(table.tableRows).toBe(2);
+    expect(table.tableCols).toBe(2);
+    expect(table.text).toContain('\t');
+    expect(field.kind).toBe('field');
+    expect(field.fieldKind).toBe('date');
+  });
+
   it('duplicates an overlay with a new id and offset', () => {
     const text = createTextOverlay(100, 150);
     const copy = duplicateOverlay(text);
@@ -70,6 +97,32 @@ describe('overlay factories', () => {
     overlay.widthMm = 20;
     overlay.heightMm = 10;
     expect(centerOverlay(overlay, 100, 150)).toEqual({ xMm: 40, yMm: 70 });
+  });
+
+  it('applies exact millimetre placement and clamps to the label', () => {
+    const overlay = createRectOverlay(40, 30);
+    overlay.xMm = 2;
+    overlay.yMm = 3;
+    overlay.widthMm = 10;
+    overlay.heightMm = 8;
+    expect(placeOverlay(overlay, { xMm: 5, yMm: 6, widthMm: 12, heightMm: 9 }, 40, 30)).toEqual({
+      xMm: 5,
+      yMm: 6,
+      widthMm: 12,
+      heightMm: 9,
+    });
+    expect(placeOverlay(overlay, { widthMm: 80, heightMm: 80, xMm: 10, yMm: 10 }, 40, 30)).toEqual({
+      xMm: 0,
+      yMm: 0,
+      widthMm: 40,
+      heightMm: 30,
+    });
+  });
+
+  it('keeps a QR code square when width or height is set', () => {
+    const qr = createQrOverlay(40, 30);
+    expect(placeOverlay(qr, { widthMm: 18 }, 40, 30)).toMatchObject({ widthMm: 18, heightMm: 18 });
+    expect(placeOverlay(qr, { heightMm: 12 }, 40, 30)).toMatchObject({ widthMm: 12, heightMm: 12 });
   });
 
   it('moves overlay z-order', () => {

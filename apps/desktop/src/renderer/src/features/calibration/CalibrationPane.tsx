@@ -18,17 +18,19 @@ export function CalibrationPane(props: CalibrationPaneProps) {
   const { t } = useI18n();
   const profile = PROFILES.find((item) => item.id === props.draft.profileId) ?? MARKLIFE_X4;
   return (
-    <Card className="mx-auto w-full max-w-xl">
+    <Card className="mx-auto w-full min-w-0 max-w-xl">
       <CardHeader>
         <CardTitle>{t('calibrationTitle')}</CardTitle>
         <CardDescription>{t('calibrationHint')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label={t('offsetX')}>
             <Input
               type="number"
               step="0.1"
+              min={profile.offsets.minXmm}
+              max={profile.offsets.maxXmm}
               value={props.draft.offsetXmm}
               onChange={(event) => props.onChange({ offsetXmm: Number(event.target.value) })}
             />
@@ -37,6 +39,8 @@ export function CalibrationPane(props: CalibrationPaneProps) {
             <Input
               type="number"
               step="0.1"
+              min={profile.offsets.minYmm}
+              max={profile.offsets.maxYmm}
               value={props.draft.offsetYmm}
               onChange={(event) => props.onChange({ offsetYmm: Number(event.target.value) })}
             />

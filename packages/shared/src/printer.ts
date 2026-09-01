@@ -22,6 +22,7 @@ export interface PrinterInfo {
   serialPort?: string;
   btAddress?: string;
   btServiceUuid?: string;
+  rssi?: number;
 }
 
 export interface PrintRequest {

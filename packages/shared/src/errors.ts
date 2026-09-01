@@ -9,6 +9,7 @@ export type ErrorCode =
   | 'INVALID_BITMAP'
   | 'PDF_RENDER_FAILED'
   | 'FILE_UNSUPPORTED'
+  | 'LIBRARY_NOT_FOUND'
   | 'TCP_CONNECTION_FAILED'
   | 'PRINT_WRITE_FAILED'
   | 'USB_DRIVER_CONFLICT'
@@ -46,6 +47,7 @@ export function isErrorCode(value: unknown): value is ErrorCode {
     value === 'INVALID_BITMAP' ||
     value === 'PDF_RENDER_FAILED' ||
     value === 'FILE_UNSUPPORTED' ||
+    value === 'LIBRARY_NOT_FOUND' ||
     value === 'TCP_CONNECTION_FAILED' ||
     value === 'PRINT_WRITE_FAILED' ||
     value === 'USB_DRIVER_CONFLICT' ||

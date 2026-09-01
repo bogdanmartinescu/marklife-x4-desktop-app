@@ -18,6 +18,10 @@ export function jobTempDir(): string {
   return userDataPath('jobs');
 }
 
+export function libraryDir(): string {
+  return userDataPath('library');
+}
+
 export function resolvePreloadPath(): string {
   const dir = join(__dirname, '../preload');
   const candidates = [

@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ArrowRight,
   Barcode,
+  CalendarClock,
+  Circle,
   Copy,
   Grid3x3,
   ImageIcon,
   Minus,
   QrCode,
   Square,
+  Table,
   Trash2,
+  TriangleAlert,
   Type,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input.js';
@@ -22,7 +27,12 @@ interface EditorPaletteProps {
   onAddBarcode: () => void;
   onAddRect: () => void;
   onAddLine: () => void;
+  onAddCircle: () => void;
+  onAddArrow: () => void;
+  onAddIcon: () => void;
   onAddImage: () => void;
+  onAddTable: () => void;
+  onAddField: () => void;
   onDuplicate: () => void;
   onDeleteSelected: () => void;
   onToggleGrid: () => void;
@@ -52,17 +62,27 @@ export function EditorPalette(props: EditorPaletteProps) {
       },
       { id: 'rect', labelKey: 'editorAddBox', shortcut: 'R', icon: Square, run: props.onAddRect },
       { id: 'line', labelKey: 'editorAddLine', shortcut: 'L', icon: Minus, run: props.onAddLine },
+      { id: 'circle', labelKey: 'editorAddCircle', shortcut: 'O', icon: Circle, run: props.onAddCircle },
+      { id: 'arrow', labelKey: 'editorAddArrow', shortcut: 'A', icon: ArrowRight, run: props.onAddArrow },
+      { id: 'icon', labelKey: 'editorAddIcon', shortcut: 'S', icon: TriangleAlert, run: props.onAddIcon },
       { id: 'image', labelKey: 'editorAddImage', shortcut: 'I', icon: ImageIcon, run: props.onAddImage },
+      { id: 'table', labelKey: 'editorAddTable', shortcut: 'E', icon: Table, run: props.onAddTable },
+      { id: 'field', labelKey: 'editorAddField', shortcut: 'F', icon: CalendarClock, run: props.onAddField },
       { id: 'dup', labelKey: 'editorDuplicate', shortcut: '⌘D', icon: Copy, run: props.onDuplicate },
       { id: 'del', labelKey: 'editorDelete', shortcut: '⌫', icon: Trash2, run: props.onDeleteSelected },
       { id: 'grid', labelKey: 'editorGrid', shortcut: 'G', icon: Grid3x3, run: props.onToggleGrid },
     ],
     [
+      props.onAddArrow,
       props.onAddBarcode,
+      props.onAddCircle,
+      props.onAddField,
+      props.onAddIcon,
       props.onAddImage,
       props.onAddLine,
       props.onAddQr,
       props.onAddRect,
+      props.onAddTable,
       props.onAddText,
       props.onDeleteSelected,
       props.onDuplicate,

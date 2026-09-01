@@ -54,6 +54,7 @@ pub fn list_devices() -> Result<Vec<PrinterInfo>, BridgeError> {
                 serial_port: None,
                 bt_address: None,
                 bt_service_uuid: None,
+                rssi: None,
             });
         }
     }

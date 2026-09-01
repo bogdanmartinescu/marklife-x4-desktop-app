@@ -29,6 +29,8 @@ pub struct PrintConfig {
     pub bt_address: Option<String>,
     pub bt_service_uuid: Option<String>,
     pub bt_tx_char_uuid: Option<String>,
+    pub bt_write_mode: Option<String>,
+    pub bt_local_name: Option<String>,
 }
 
 pub fn validate_job_path(path: &Path) -> Result<PathBuf, BridgeError> {

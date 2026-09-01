@@ -7,7 +7,12 @@ interface EditorShortcuts {
   onAddBarcode: () => void;
   onAddRect: () => void;
   onAddLine: () => void;
+  onAddCircle: () => void;
+  onAddArrow: () => void;
+  onAddIcon: () => void;
   onAddImage: () => void;
+  onAddTable: () => void;
+  onAddField: () => void;
   onDuplicate: () => void;
   onDeleteSelected: () => void;
   onToggleGrid: () => void;
@@ -78,8 +83,23 @@ export function useEditorShortcuts(handlers: EditorShortcuts): void {
         case 'l':
           current.onAddLine();
           return;
+        case 'o':
+          current.onAddCircle();
+          return;
+        case 'a':
+          current.onAddArrow();
+          return;
+        case 's':
+          current.onAddIcon();
+          return;
         case 'i':
           current.onAddImage();
+          return;
+        case 'e':
+          current.onAddTable();
+          return;
+        case 'f':
+          current.onAddField();
           return;
         case 'g':
           current.onToggleGrid();

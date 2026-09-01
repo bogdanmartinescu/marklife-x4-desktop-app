@@ -1,12 +1,10 @@
 import {
-  DEFAULT_LABEL_SIZES,
-  LABEL_MM_MAX,
-  LABEL_MM_MIN,
-  clampLabelMm,
   labelSizeKey,
+  labelSizesForMaxWidth,
   parseLabelSizeKey,
+  type LabelSize,
+  type LabelSizeGroup,
 } from '@thermalbridge/printer-profiles';
-import { Input } from '@/components/ui/input.js';
 import {
   Select,
   SelectContent,
@@ -15,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select.js';
 import { useI18n } from '@/i18n/I18nProvider.js';
+import type { MessageKey } from '@/i18n/messages.js';
 import { cn } from '@/lib/utils.js';
 
 interface LabelSizeSelectProps {
@@ -22,85 +21,81 @@ interface LabelSizeSelectProps {
   heightMm: number;
   onChange: (size: { widthMm: number; heightMm: number }) => void;
   variant?: 'stack' | 'inline';
+  maxWidthMm?: number;
+  sizes?: readonly LabelSize[];
 }
+
+const GROUP_KEYS: Record<LabelSizeGroup, MessageKey> = {
+  documents: 'sizeGroupDocuments',
+  roll: 'sizeGroupRoll',
+  labels: 'sizeGroupLabels',
+};
+
+const GROUP_ORDER: readonly LabelSizeGroup[] = ['documents', 'roll', 'labels'];
 
 export function LabelSizeSelect(props: LabelSizeSelectProps) {
   const { t } = useI18n();
   const key = labelSizeKey(props.widthMm, props.heightMm);
-  const known = DEFAULT_LABEL_SIZES.some(
+  const sizes = props.sizes ?? labelSizesForMaxWidth(props.maxWidthMm);
+  const listed = sizes.some(
     (size) => size.widthMm === props.widthMm && size.heightMm === props.heightMm,
   );
-
+  const grouped = sizes.some((size) => size.group !== undefined);
   const inline = props.variant === 'inline';
 
   return (
-    <div className={cn(inline ? 'flex items-center gap-1.5' : 'grid gap-2')}>
-      <Select
-        value={key}
-        onValueChange={(value) => {
-          const parsed = parseLabelSizeKey(value);
-          if (parsed) {
-            props.onChange(parsed);
-          }
-        }}
+    <Select
+      value={key}
+      onValueChange={(value) => {
+        const parsed = parseLabelSizeKey(value);
+        if (parsed) {
+          props.onChange(parsed);
+        }
+      }}
+    >
+      <SelectTrigger
+        size={inline ? 'sm' : 'default'}
+        className={cn(inline ? 'h-8 w-[10rem] shrink-0 border-white/5 bg-ink-800' : 'w-full')}
       >
-        <SelectTrigger
-          size={inline ? 'sm' : 'default'}
-          className={cn(inline ? 'h-8 w-[9.75rem] border-white/5 bg-ink-800' : 'w-full')}
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent position="popper">
-          {DEFAULT_LABEL_SIZES.map((size) => (
-            <SelectItem
-              key={labelSizeKey(size.widthMm, size.heightMm)}
-              value={labelSizeKey(size.widthMm, size.heightMm)}
-            >
-              {size.displayName}
-            </SelectItem>
-          ))}
-          {known ? null : (
-            <SelectItem value={key}>
-              {t('labelSizeCustom', { width: props.widthMm, height: props.heightMm })}
-            </SelectItem>
-          )}
-        </SelectContent>
-      </Select>
-      <div className={cn(inline ? 'flex items-center gap-1' : 'grid grid-cols-2 gap-2')}>
-        <Input
-          type="number"
-          min={LABEL_MM_MIN}
-          max={LABEL_MM_MAX}
-          step={0.1}
-          aria-label={t('labelWidth')}
-          value={props.widthMm}
-          className={cn(inline && 'h-8 w-14 border-white/5 bg-ink-800 px-1.5 text-center font-mono text-ui-xs')}
-          onChange={(event) => {
-            const widthMm = Number(event.target.value);
-            if (!Number.isFinite(widthMm) || widthMm <= 0) {
-              return;
-            }
-            props.onChange({ widthMm: clampLabelMm(widthMm), heightMm: props.heightMm });
-          }}
-        />
-        {inline ? <span className="text-ui-2xs text-ink-500">×</span> : null}
-        <Input
-          type="number"
-          min={LABEL_MM_MIN}
-          max={LABEL_MM_MAX}
-          step={0.1}
-          aria-label={t('labelHeight')}
-          value={props.heightMm}
-          className={cn(inline && 'h-8 w-14 border-white/5 bg-ink-800 px-1.5 text-center font-mono text-ui-xs')}
-          onChange={(event) => {
-            const heightMm = Number(event.target.value);
-            if (!Number.isFinite(heightMm) || heightMm <= 0) {
-              return;
-            }
-            props.onChange({ widthMm: props.widthMm, heightMm: clampLabelMm(heightMm) });
-          }}
-        />
-      </div>
-    </div>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent position="popper">
+        {grouped
+          ? GROUP_ORDER.map((group) => {
+              const items = sizes.filter((size) => size.group === group);
+              if (items.length === 0) {
+                return null;
+              }
+              return (
+                <div key={group}>
+                  <p className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wide text-ink-500">
+                    {t(GROUP_KEYS[group])}
+                  </p>
+                  {items.map((size) => (
+                    <SelectItem
+                      key={labelSizeKey(size.widthMm, size.heightMm)}
+                      value={labelSizeKey(size.widthMm, size.heightMm)}
+                    >
+                      {size.displayName}
+                    </SelectItem>
+                  ))}
+                </div>
+              );
+            })
+          : sizes.map((size) => (
+              <SelectItem
+                key={labelSizeKey(size.widthMm, size.heightMm)}
+                value={labelSizeKey(size.widthMm, size.heightMm)}
+              >
+                {size.displayName}
+              </SelectItem>
+            ))}
+        {listed ? null : (
+          <SelectItem value={key}>
+            {t('labelSizeCustom', { width: props.widthMm, height: props.heightMm })}
+          </SelectItem>
+        )}
+      </SelectContent>
+    </Select>
   );
 }

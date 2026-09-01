@@ -36,23 +36,23 @@ export function ConnectPrinterDialog(props: ConnectPrinterDialogProps) {
       onClick={props.onClose}
     >
       <Card
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden border-white/5 bg-ink-800 py-4 shadow-panel"
+        className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden border-white/5 bg-ink-800 py-4 shadow-panel"
         onClick={(event) => event.stopPropagation()}
       >
-        <CardHeader className="flex flex-row items-start justify-between gap-3 px-4">
+        <CardHeader className="flex flex-row items-start justify-between gap-3 px-5">
           <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2">
-              <Bluetooth className="size-4" />
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Bluetooth className="size-5 text-primary" />
               {t('connectPrinter')}
             </CardTitle>
-            <p className="text-sm text-muted-foreground">{t('connectPrinterHint')}</p>
+            <p className="text-sm text-ink-400">{t('connectPrinterHint')}</p>
           </div>
           <Button type="button" size="icon-sm" variant="ghost" onClick={props.onClose}>
             <X />
           </Button>
         </CardHeader>
-        <CardContent className="min-h-0 flex-1 overflow-hidden px-4">
-          <ScrollArea className="h-[min(32rem,60vh)] pr-3">
+        <CardContent className="min-h-0 flex-1 overflow-hidden px-5">
+          <ScrollArea className="h-[min(36rem,68vh)] pr-3">
             <ConnectionTabs
               printers={props.printers}
               usbDevices={props.usbDevices}

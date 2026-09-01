@@ -33,14 +33,50 @@ export const PrinterProfileSchema = z.object({
     minYmm: z.number(),
     maxYmm: z.number(),
   }),
+  maxWidthMm: z.number().positive().optional(),
+  labelSizes: z
+    .array(
+      z.object({
+        widthMm: z.number().positive(),
+        heightMm: z.number().positive(),
+        displayName: z.string().min(1).optional(),
+        group: z.enum(['documents', 'roll', 'labels']).optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type PrinterProfile = z.infer<typeof PrinterProfileSchema>;
 
-export const DEFAULT_LABEL_SIZES = [
+export type LabelSizeGroup = 'documents' | 'roll' | 'labels';
+
+export type LabelSize = {
+  widthMm: number;
+  heightMm: number;
+  displayName: string;
+  group?: LabelSizeGroup;
+};
+
+export const DEFAULT_LABEL_SIZES: readonly LabelSize[] = [
+  { widthMm: 20, heightMm: 15, displayName: '20 × 15 mm' },
+  { widthMm: 20, heightMm: 30, displayName: '20 × 30 mm' },
+  { widthMm: 25, heightMm: 15, displayName: '25 × 15 mm' },
+  { widthMm: 25, heightMm: 30, displayName: '25 × 30 mm' },
+  { widthMm: 30, heightMm: 15, displayName: '30 × 15 mm' },
+  { widthMm: 30, heightMm: 20, displayName: '30 × 20 mm' },
+  { widthMm: 30, heightMm: 30, displayName: '30 × 30 mm' },
+  { widthMm: 30, heightMm: 40, displayName: '30 × 40 mm' },
+  { widthMm: 30, heightMm: 50, displayName: '30 × 50 mm' },
   { widthMm: 40, heightMm: 12, displayName: '40 × 12 mm' },
+  { widthMm: 40, heightMm: 20, displayName: '40 × 20 mm' },
   { widthMm: 40, heightMm: 30, displayName: '40 × 30 mm' },
+  { widthMm: 40, heightMm: 40, displayName: '40 × 40 mm' },
+  { widthMm: 40, heightMm: 50, displayName: '40 × 50 mm' },
+  { widthMm: 40, heightMm: 60, displayName: '40 × 60 mm' },
+  { widthMm: 40, heightMm: 80, displayName: '40 × 80 mm' },
+  { widthMm: 50, heightMm: 20, displayName: '50 × 20 mm' },
   { widthMm: 50, heightMm: 30, displayName: '50 × 30 mm' },
+  { widthMm: 50, heightMm: 40, displayName: '50 × 40 mm' },
   { widthMm: 50, heightMm: 50, displayName: '50 × 50 mm' },
   { widthMm: 70, heightMm: 40, displayName: '70 × 40 mm' },
   { widthMm: 100, heightMm: 100, displayName: '100 × 100 mm' },
@@ -55,7 +91,8 @@ export const DEFAULT_LABEL_SIZES = [
 ] as const;
 
 export const LABEL_MM_MIN = 10;
-export const LABEL_MM_MAX = 297;
+/** Legal height (14 in) is the largest D210 driver format. */
+export const LABEL_MM_MAX = 356;
 
 export function labelSizeKey(widthMm: number, heightMm: number): string {
   return `${widthMm}x${heightMm}`;
@@ -74,6 +111,16 @@ export function parseLabelSizeKey(
     return undefined;
   }
   return { widthMm, heightMm };
+}
+
+export function printableWidthMm(
+  widthMm: number,
+  maxWidthMm: number | undefined,
+): number {
+  if (maxWidthMm === undefined) {
+    return widthMm;
+  }
+  return Math.min(widthMm, maxWidthMm);
 }
 
 export function clampLabelMm(value: number): number {

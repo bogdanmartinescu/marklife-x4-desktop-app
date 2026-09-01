@@ -35,6 +35,7 @@ pub fn list_bluetooth_ports() -> Result<Vec<PrinterInfo>, BridgeError> {
             serial_port: Some(port.port_name),
             bt_address: None,
             bt_service_uuid: None,
+            rssi: None,
         });
     }
     Ok(printers)

@@ -23,8 +23,50 @@ export function createBlankLabelPage(): LabelPage {
   };
 }
 
+export function resolveSelectedPage(
+  pages: readonly LabelPage[],
+  selectedPageId: string,
+): LabelPage | undefined {
+  return pages.find((page) => page.id === selectedPageId) ?? pages[0];
+}
+
+/** Attach an imported image to the current canvas without wiping overlays or other pages. */
+export function assignSourceToCurrentPage(pages: LabelPage[], selectedPageId: string): LabelPage[] {
+  const target = resolveSelectedPage(pages, selectedPageId);
+  if (!target) {
+    return [createBlankLabelPage()];
+  }
+  return pages.map((page) => (page.id === target.id ? { ...page, hasSource: true } : page));
+}
+
 function cloneOverlays(overlays: OverlayElement[]): OverlayElement[] {
   return overlays.map((overlay) => ({ ...overlay, id: createOverlayId() }));
+}
+
+export function scaleLabelPageX(
+  page: LabelPage,
+  fromWidthMm: number,
+  toWidthMm: number,
+): LabelPage {
+  if (fromWidthMm === toWidthMm || fromWidthMm <= 0) {
+    return page;
+  }
+  const scale = toWidthMm / fromWidthMm;
+  return {
+    ...page,
+    overlays: page.overlays.map((overlay) => ({
+      ...overlay,
+      xMm: overlay.xMm * scale,
+      widthMm: overlay.widthMm * scale,
+    })),
+    contentBox: page.contentBox
+      ? {
+          ...page.contentBox,
+          xMm: page.contentBox.xMm * scale,
+          widthMm: page.contentBox.widthMm * scale,
+        }
+      : page.contentBox,
+  };
 }
 
 export function updateLabelPage(
@@ -75,4 +117,27 @@ export function removeLabelPage(pages: LabelPage[], id: string): LabelPage[] {
     return pages;
   }
   return pages.filter((page) => page.id !== id);
+}
+
+export function templatePagesFromLabel(
+  pages: LabelPage[],
+): Array<{ overlays: OverlayElement[] }> {
+  return pages.map((page) => ({
+    overlays: page.overlays.map((overlay) => ({ ...overlay })),
+  }));
+}
+
+export function pagesFromTemplate(
+  pages: ReadonlyArray<{ overlays: OverlayElement[] }>,
+): LabelPage[] {
+  const limited = pages.slice(0, LABEL_PAGE_MAX);
+  if (limited.length === 0) {
+    return [createBlankLabelPage()];
+  }
+  return limited.map((page) => ({
+    id: createLabelPageId(),
+    overlays: cloneOverlays(page.overlays),
+    contentBox: null,
+    hasSource: false,
+  }));
 }

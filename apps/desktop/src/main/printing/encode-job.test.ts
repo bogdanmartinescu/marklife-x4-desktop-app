@@ -86,6 +86,18 @@ describe('encodeJobForRoute', () => {
     });
   });
 
+  it('encodes Phomemo M110 BLE jobs as ESC/POS raster, not TSPL', async () => {
+    const image = whiteImage(8, 8);
+    const bytes = await encodeJobForRoute({
+      profileId: 'phomemo-m110',
+      transport: 'bluetooth-ble',
+      image,
+      tspl: tsplOptions(image),
+    });
+    expect(Array.from(bytes.slice(0, 4))).toEqual([0x1b, 0x4e, 0x0d, 0x04]);
+    expect(Buffer.from(bytes).toString('latin1')).not.toContain('SIZE');
+  });
+
   it('does not encode TSPL for planned D210 or P50 routes', async () => {
     const image = whiteImage(8, 8);
     await expect(

@@ -1,7 +1,8 @@
+import type { D210PrintSettings } from '@thermalbridge/printer-profiles';
 import type { FitMode, Rotation } from '@thermalbridge/thermal-core';
 import type { AppSettings, PrinterInfo } from '@thermalbridge/shared';
 
-export type Screen = 'print' | 'setup' | 'calibration' | 'diagnostics';
+export type Screen = 'print' | 'setup' | 'calibration' | 'diagnostics' | 'history' | 'library';
 
 export interface SourceDocument {
   name: string;
@@ -34,6 +35,7 @@ export interface PrintDraft {
   offsetXmm: number;
   offsetYmm: number;
   diagnosticTsplOverSpp: boolean;
+  d210: D210PrintSettings;
 }
 
 export interface AppModel {

@@ -17,13 +17,13 @@ export function DiagnosticsPane() {
   }, []);
 
   return (
-    <Card className="mx-auto w-full max-w-xl">
+    <Card className="mx-auto w-full min-w-0 max-w-xl">
       <CardHeader>
         <CardTitle>{t('diagnosticsTitle')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {info ? (
-          <dl className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-2 text-sm">
+          <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-[8.75rem_1fr]">
             <dt className="text-muted-foreground">{t('diagApp')}</dt>
             <dd>{info.appVersion}</dd>
             <dt className="text-muted-foreground">{t('diagElectron')}</dt>

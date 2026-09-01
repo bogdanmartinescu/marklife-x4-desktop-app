@@ -9,13 +9,19 @@ export type TransportKind =
 export type ProtocolId =
   | 'tspl'
   | 'esc-pos'
+  | 'phomemo-m110'
   | 'marklife-x4-bt-v7'
   | 'marklife-d210-bt-v5'
   | 'marklife-p50-bt-v3';
 
 export type CodecId = 'raw-mono-1bpp' | 'jbig-t85' | 'marklife-d210';
 
-export type SessionProfileId = 'none' | 'raw-stream' | 'marklife-spp' | 'marklife-ble-credit';
+export type SessionProfileId =
+  | 'none'
+  | 'raw-stream'
+  | 'marklife-spp'
+  | 'marklife-ble-credit'
+  | 'phomemo-ble-paced';
 
 export type RouteStatus = 'verified' | 'candidate' | 'experimental';
 

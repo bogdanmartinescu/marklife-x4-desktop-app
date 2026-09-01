@@ -49,6 +49,15 @@ export {
   type X4BluetoothJobInput,
 } from './languages/marklife/x4-bluetooth/encoder.js';
 export {
+  PHOMEMO_M110_BYTES_PER_LINE,
+  PHOMEMO_M110_WIDTH_PX,
+  buildPhomemoM110Job,
+  encodePhomemoM110Commands,
+  placeOnPhomemoHead,
+  type BuildPhomemoM110JobOptions,
+  type PhomemoM110CommandOptions,
+} from './languages/escpos/phomemo-m110.js';
+export {
   X4_BLUETOOTH_HEADER_FIELDS,
   type X4BluetoothHeaderInput,
   type X4BluetoothHeaderFieldStatus,

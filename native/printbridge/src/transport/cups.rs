@@ -99,6 +99,7 @@ pub fn list_printers() -> Result<Vec<PrinterInfo>, BridgeError> {
                 serial_port: None,
                 bt_address: None,
                 bt_service_uuid: None,
+                rssi: None,
             });
         }
         unsafe { cupsFreeDests(count, dests) };
