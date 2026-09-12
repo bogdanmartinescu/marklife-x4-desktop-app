@@ -4,6 +4,7 @@ import {
   LABEL_PAGE_MAX,
   assignSourceToCurrentPage,
   createBlankLabelPage,
+  pagesForImportedPdf,
   duplicateLabelPage,
   insertLabelPageAfter,
   pagesFromTemplate,
@@ -104,6 +105,32 @@ describe('label pages', () => {
     const result = insertLabelPageAfter(pages, last.id);
     expect(result.pages).toHaveLength(LABEL_PAGE_MAX);
     expect(result.inserted.id).toBe(last.id);
+  });
+
+  it('expands a multi-page PDF into one stacked canvas per PDF page', () => {
+    const overlay = createTextOverlay(40, 30);
+    const first = { ...createBlankLabelPage(), overlays: [overlay] };
+    const next = pagesForImportedPdf(3, first);
+    expect(next).toHaveLength(3);
+    expect(next[0]?.id).toBe(first.id);
+    expect(next[0]?.overlays).toEqual([overlay]);
+    expect(next[0]?.hasSource).toBe(true);
+    expect(next[1]?.id).not.toBe(first.id);
+    expect(next[2]?.id).not.toBe(first.id);
+    expect(next[1]?.hasSource).toBe(true);
+    expect(next[2]?.overlays).toEqual([]);
+  });
+
+  it('caps an imported PDF at the page limit', () => {
+    const next = pagesForImportedPdf(LABEL_PAGE_MAX + 10);
+    expect(next).toHaveLength(LABEL_PAGE_MAX);
+  });
+
+  it('keeps a single canvas for a one-page PDF', () => {
+    const first = createBlankLabelPage();
+    const next = pagesForImportedPdf(1, first);
+    expect(next).toHaveLength(1);
+    expect(next[0]?.id).toBe(first.id);
   });
 
   it('assigns an imported image to the selected canvas and keeps the others', () => {

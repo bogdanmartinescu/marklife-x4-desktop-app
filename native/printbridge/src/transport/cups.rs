@@ -122,12 +122,23 @@ pub fn send(config: &PrintConfig, path: &Path) -> Result<(), BridgeError> {
         .map_err(|_| BridgeError::new("PARSE_ERROR", "Job path contains a NUL byte"))?;
     let title = CString::new(config.job_name.as_str())
         .unwrap_or_else(|_| CString::new("ThermalBridge Label").expect("static title is valid"));
+    let mut options: *mut CupsOption = ptr::null_mut();
+    let mut num_options = 0;
     let raw_name = CString::new("raw").expect("static option name is valid");
     let raw_value = CString::new("true").expect("static option value is valid");
+    let media_name = CString::new("media").expect("static option name is valid");
+    let media_value = config
+        .cups_media
+        .as_deref()
+        .and_then(|value| CString::new(value).ok());
 
-    let mut options: *mut CupsOption = ptr::null_mut();
-    let num_options =
-        unsafe { cupsAddOption(raw_name.as_ptr(), raw_value.as_ptr(), 0, &mut options) };
+    if config.raw_job {
+        num_options =
+            unsafe { cupsAddOption(raw_name.as_ptr(), raw_value.as_ptr(), num_options, &mut options) };
+    } else if let Some(media) = media_value.as_ref() {
+        num_options =
+            unsafe { cupsAddOption(media_name.as_ptr(), media.as_ptr(), num_options, &mut options) };
+    }
 
     let job_id = unsafe {
         cupsPrintFile(

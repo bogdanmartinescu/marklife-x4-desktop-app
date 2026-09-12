@@ -31,6 +31,9 @@ pub struct PrintConfig {
     pub bt_tx_char_uuid: Option<String>,
     pub bt_write_mode: Option<String>,
     pub bt_local_name: Option<String>,
+    /// When true (default), CUPS submits a raw thermal payload. Document printers must be false.
+    pub raw_job: bool,
+    pub cups_media: Option<String>,
 }
 
 pub fn validate_job_path(path: &Path) -> Result<PathBuf, BridgeError> {

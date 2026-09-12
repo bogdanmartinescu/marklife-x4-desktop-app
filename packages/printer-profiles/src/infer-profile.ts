@@ -42,14 +42,28 @@ function detectX4(device: ProfileHint): string | undefined {
   return undefined;
 }
 
+function detectCanon(device: ProfileHint): string | undefined {
+  if (loweredName(device).includes('canon')) {
+    return 'canon-inkjet';
+  }
+  return undefined;
+}
+
 /** First matching detector wins. Add new models here; do not reuse another model's protocol. */
-const DETECTORS: readonly Detector[] = [detectPhomemo, detectD210, detectP50, detectX4];
+const BLE_DETECTORS: readonly Detector[] = [detectPhomemo, detectD210, detectP50, detectX4];
+const OS_QUEUE_DETECTORS: readonly Detector[] = [detectCanon, detectX4, detectD210];
 
 export function inferPrinterProfile(device: ProfileHint): string | undefined {
-  if (device.backend !== 'bluetooth-ble' && device.backend !== 'bluetooth-spp') {
+  const detectors =
+    device.backend === 'bluetooth-ble' || device.backend === 'bluetooth-spp'
+      ? BLE_DETECTORS
+      : device.backend === 'cups' || device.backend === 'windows-spooler'
+        ? OS_QUEUE_DETECTORS
+        : undefined;
+  if (detectors === undefined) {
     return undefined;
   }
-  for (const detect of DETECTORS) {
+  for (const detect of detectors) {
     const profileId = detect(device);
     if (profileId !== undefined) {
       return profileId;

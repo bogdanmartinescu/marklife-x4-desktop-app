@@ -1,15 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import {
   MARKLIFE_X4,
   PROFILES,
   applyD210PrintSettings,
   applyProfilePrintSettings,
+  profileDefaultPrintSettings,
   DEFAULT_D210_PRINT_SETTINGS,
   inferPrinterProfile,
   labelSizeRecord,
   labelSizesForProfile,
   printableWidthMm,
+  profileColorModel,
 } from '@thermalbridge/printer-profiles';
+import {
+  computeFitRect,
+  enhanceDocumentRgba,
+  isBelowPrintResolution,
+  mmToDots,
+  prepareInkjetRgba,
+} from '@thermalbridge/thermal-core';
 import type {
   AppSettings,
   LabelTemplateMeta,
@@ -45,12 +55,20 @@ import { CalibrationPane } from '@/features/calibration/CalibrationPane.js';
 import { HistoryPane } from '@/features/library/HistoryPane.js';
 import { LibraryPane } from '@/features/library/LibraryPane.js';
 import { printHistoryInput } from '@/features/library/print-history.js';
+import { printRgbaForProfile } from '@/features/print/print-rgba.js';
+import { sourcePrepForPage } from '@/features/print/source-prep.js';
 import { rgbaFromPngBytes } from '@/features/library/png-rgba.js';
 import { DiagnosticsPane } from '@/features/diagnostics/DiagnosticsPane.js';
 import { PreviewPane } from '@/features/preview/PreviewPane.js';
 import { pdfPageCount } from '@/features/preview/pdf.js';
 import { copyToUint8Array, resolveSourceMime } from '@/features/import/source-bytes.js';
-import { boxFromFit } from '@/features/preview/content-placement.js';
+import {
+  CONTENT_SCALE_MAX,
+  CONTENT_SCALE_MIN,
+  boxFromFit,
+  scaleBoxToPercent,
+  scalePercentFromBox,
+} from '@/features/preview/content-placement.js';
 import {
   canvasToPngBlob,
   renderLabelCanvas,
@@ -82,6 +100,8 @@ import { hasIncrementingFields } from '@/features/editor/field-value.js';
 import {
   assignSourceToCurrentPage,
   createBlankLabelPage,
+  LABEL_PAGE_MAX,
+  pagesForImportedPdf,
   duplicateLabelPage,
   insertLabelPageAfter,
   pagesFromTemplate,
@@ -97,6 +117,7 @@ import {
   putPageSource,
   releaseAllPageSources,
   releasePageSource,
+  revertEnhancedSource,
   sourceUrlsFromMap,
   type PageSourceMap,
 } from '@/features/editor/page-sources.js';
@@ -198,6 +219,9 @@ function AppShell(props: {
   const bleSightingsRef = useRef<BleSighting[]>([]);
   const [draft, setDraft] = useState<PrintDraft>(INITIAL_DRAFT);
   const [pageSources, setPageSources] = useState<PageSourceMap>({});
+  const [cleanupBannerDismissed, setCleanupBannerDismissed] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [pages, setPages] = useState<LabelPage[]>(() => [createBlankLabelPage()]);
   const [selectedPageId, setSelectedPageId] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -405,7 +429,11 @@ function AppShell(props: {
   }, [pages, selectedPageId]);
 
   const materializePageSource = useCallback(
-    async (pageId: string, document: SourceDocument): Promise<void> => {
+    async (
+      pageId: string,
+      document: SourceDocument,
+      options?: { forceEnhance?: boolean },
+    ): Promise<void> => {
       const bitmap = await renderSourceBitmap({
         bytes: document.bytes,
         mimeType: document.mimeType,
@@ -414,12 +442,76 @@ function AppShell(props: {
       });
       const rotated = rotateSource(bitmap, draft.rotation);
       const size = intrinsicSize(rotated);
-      const blob = await canvasToPngBlob(rotated);
-      const url = URL.createObjectURL(blob);
       const layout = labelLayoutRef.current;
+      setCleanupBannerDismissed((current) => {
+        if (!current.has(pageId)) {
+          return current;
+        }
+        const next = new Set(current);
+        next.delete(pageId);
+        return next;
+      });
+      let display = rotated;
+      let enhanced = false;
+      let originalCanvas: HTMLCanvasElement | undefined;
+      const colorModel = profileColorModel(profile);
+      const belowResolution = isBelowPrintResolution({
+        sourceWidth: size.width,
+        sourceHeight: size.height,
+        widthMm: layout.widthMm,
+        heightMm: layout.heightMm,
+        dpi,
+      });
+      const prep = sourcePrepForPage({
+        mimeType: document.mimeType,
+        colorModel,
+        belowResolution,
+        ...(options?.forceEnhance === true ? { forceEnhance: true } : {}),
+      });
+      if (prep.upscale || prep.color !== 'none') {
+        try {
+          if (prep.color === 'thermal-enhance') {
+            originalCanvas = cloneCanvas(rotated);
+          }
+          const working = prep.upscale
+            ? upscaleToPrintFit(rotated, layout.widthMm, layout.heightMm, dpi)
+            : rotated;
+          const ctx = working.getContext('2d');
+          if (!ctx) {
+            throw new Error(t('previewFailed'));
+          }
+          const rgba = new Uint8Array(ctx.getImageData(0, 0, working.width, working.height).data);
+          const nextRgba =
+            prep.color === 'thermal-enhance'
+              ? enhanceDocumentRgba(rgba, working.width, working.height)
+              : prep.color === 'inkjet-cmyk'
+                ? prepareInkjetRgba(rgba)
+                : rgba;
+          if (nextRgba !== rgba) {
+            ctx.putImageData(
+              new ImageData(new Uint8ClampedArray(nextRgba), working.width, working.height),
+              0,
+              0,
+            );
+          }
+          display = working;
+          if (prep.color === 'thermal-enhance') {
+            enhanced = true;
+            if (belowResolution) {
+              toast.warning(t('photoLowResCleanup'));
+            }
+          } else if (prep.upscale) {
+            toast.warning(t('inkjetLowResPrep', { n: dpi }));
+          }
+        } catch {
+          toast.error(t('photoCleanupFailed'));
+        }
+      }
+      const blob = await canvasToPngBlob(display);
+      const url = URL.createObjectURL(blob);
       const fitted = boxFromFit({
-        sourceWidthPx: size.width,
-        sourceHeightPx: size.height,
+        sourceWidthPx: display.width,
+        sourceHeightPx: display.height,
         labelWidthMm: layout.widthMm,
         labelHeightMm: layout.heightMm,
         dpi,
@@ -432,9 +524,12 @@ function AppShell(props: {
           {
             document,
             previewUrl: url,
-            width: size.width,
-            height: size.height,
-            canvas: rotated,
+            width: display.width,
+            height: display.height,
+            canvas: display,
+            ...(enhanced && originalCanvas !== undefined
+              ? { enhanced: true, originalCanvas }
+              : {}),
           },
           (revoked) => URL.revokeObjectURL(revoked),
         ),
@@ -446,7 +541,7 @@ function AppShell(props: {
         }),
       );
     },
-    [dpi, draft.rotation],
+    [dpi, draft.rotation, profile, t],
   );
 
   useEffect(() => {
@@ -477,13 +572,18 @@ function AppShell(props: {
     );
   }, [draft.widthMm, draft.heightMm, draft.fitMode, dpi]);
 
-  const rotationDpiRef = useRef({ rotation: draft.rotation, dpi });
+  const colorModel = profileColorModel(profile);
+  const rotationDpiRef = useRef({ rotation: draft.rotation, dpi, colorModel });
   useEffect(() => {
     const previous = rotationDpiRef.current;
-    if (previous.rotation === draft.rotation && previous.dpi === dpi) {
+    if (
+      previous.rotation === draft.rotation &&
+      previous.dpi === dpi &&
+      previous.colorModel === colorModel
+    ) {
       return;
     }
-    rotationDpiRef.current = { rotation: draft.rotation, dpi };
+    rotationDpiRef.current = { rotation: draft.rotation, dpi, colorModel };
     for (const [pageId, assets] of Object.entries(pageSourcesRef.current)) {
       void materializePageSource(pageId, assets.document).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : t('previewFailed');
@@ -491,7 +591,7 @@ function AppShell(props: {
         toast.error(message);
       });
     }
-  }, [draft.rotation, dpi, materializePageSource, t]);
+  }, [colorModel, draft.rotation, dpi, materializePageSource, t]);
 
   const updateDraft = (patch: Partial<PrintDraft>): void => {
     if (patch.widthMm !== undefined || patch.heightMm !== undefined) {
@@ -500,9 +600,13 @@ function AppShell(props: {
     setDraft((current) => {
       const next = { ...current, ...patch };
       const nextProfile = PROFILES.find((item) => item.id === next.profileId) ?? MARKLIFE_X4;
+      const profileChanged =
+        patch.profileId !== undefined && patch.profileId !== current.profileId;
+      const clamped = applyProfilePrintSettings(nextProfile, next);
       return {
         ...next,
-        ...applyProfilePrintSettings(nextProfile, next),
+        ...clamped,
+        ...(profileChanged ? profileDefaultPrintSettings(nextProfile) : {}),
         d210: applyD210PrintSettings(next.d210),
       };
     });
@@ -520,15 +624,37 @@ function AppShell(props: {
       if (!target) {
         throw new Error(t('previewFailed'));
       }
-      setPages((current) => assignSourceToCurrentPage(current, target.id));
+      const explodePdf = mimeType === 'application/pdf' && pageCount > 1;
       setSelectedId(null);
-      await materializePageSource(target.id, {
-        name,
-        mimeType,
-        bytes,
-        pageCount,
-        pageNumber: 1,
-      });
+      if (explodePdf) {
+        const nextPages = pagesForImportedPdf(pageCount, target);
+        const first = nextPages[0];
+        if (!first) {
+          throw new Error(t('previewFailed'));
+        }
+        flushSync(() => {
+          setPages(nextPages);
+          setSelectedPageId(first.id);
+        });
+        for (const [index, page] of nextPages.entries()) {
+          await materializePageSource(page.id, {
+            name,
+            mimeType,
+            bytes,
+            pageCount,
+            pageNumber: index + 1,
+          });
+        }
+      } else {
+        setPages((current) => assignSourceToCurrentPage(current, target.id));
+        await materializePageSource(target.id, {
+          name,
+          mimeType,
+          bytes,
+          pageCount,
+          pageNumber: 1,
+        });
+      }
       if (options.remember !== false && isMediaMimeType(mimeType) && window.thermalBridge) {
         void window.thermalBridge.library
           .addMedia({ name, mimeType, data: bytes })
@@ -542,7 +668,9 @@ function AppShell(props: {
             // Library persistence is best-effort.
           });
       }
-      const message = t('loaded', { name });
+      const message = explodePdf
+        ? t('loadedPages', { name, n: Math.min(pageCount, LABEL_PAGE_MAX) })
+        : t('loaded', { name });
       setStatus(message);
       toast.success(message);
     } catch (error: unknown) {
@@ -654,6 +782,52 @@ function AppShell(props: {
     });
   };
 
+  const onRevertCleanup = (): void => {
+    const page = selectedPage;
+    if (!page) {
+      return;
+    }
+    const assets = pageSources[page.id];
+    if (!assets?.originalCanvas) {
+      return;
+    }
+    void canvasToPngBlob(assets.originalCanvas)
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const reverted = revertEnhancedSource(assets, url);
+        if (!reverted) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        const layout = labelLayoutRef.current;
+        setPageSources((current) =>
+          putPageSource(current, page.id, reverted, (revoked) => URL.revokeObjectURL(revoked)),
+        );
+        setPages((current) =>
+          updateLabelPage(current, page.id, {
+            contentBox: boxFromFit({
+              sourceWidthPx: reverted.width,
+              sourceHeightPx: reverted.height,
+              labelWidthMm: layout.widthMm,
+              labelHeightMm: layout.heightMm,
+              dpi,
+              fitMode: layout.fitMode,
+            }),
+          }),
+        );
+      })
+      .catch((error: unknown) => {
+        toast.error(formatError(error));
+      });
+  };
+
+  const onDismissCleanup = (): void => {
+    if (!selectedPage) {
+      return;
+    }
+    setCleanupBannerDismissed((current) => new Set(current).add(selectedPage.id));
+  };
+
   const onPrint = (): void => {
     if (!draft.printerId) {
       setStatus(t('selectPrinterFirst'));
@@ -692,7 +866,7 @@ function AppShell(props: {
           const request: PrintRequest = {
             width: bitmap.width,
             height: bitmap.height,
-            rgba: bitmap.rgba,
+            rgba: printRgbaForProfile(draft.profileId, bitmap.rgba),
             widthMm: draft.widthMm,
             heightMm: draft.heightMm,
             dpi,
@@ -804,6 +978,59 @@ function AppShell(props: {
       .finally(() => setBusy(false));
   };
 
+  // ─── Image controls hoisted to App level so PrintPane can drive them ───────
+  const selectedFitBox = useMemo(() => {
+    const w = selectedSource?.width ?? 0;
+    const h = selectedSource?.height ?? 0;
+    if (w <= 0 || h <= 0) {
+      return null;
+    }
+    return boxFromFit({
+      sourceWidthPx: w,
+      sourceHeightPx: h,
+      labelWidthMm: draft.widthMm,
+      labelHeightMm: draft.heightMm,
+      dpi,
+      fitMode: draft.fitMode,
+    });
+  }, [selectedSource?.width, selectedSource?.height, draft.widthMm, draft.heightMm, dpi, draft.fitMode]);
+
+  const contentScalePercent = useMemo(() => {
+    const cb = selectedPage?.contentBox ?? null;
+    if (!cb || !selectedFitBox) {
+      return null;
+    }
+    return scalePercentFromBox(cb, selectedFitBox);
+  }, [selectedPage?.contentBox, selectedFitBox]);
+
+  const onContentScale = (percent: number): void => {
+    const cb = selectedPage?.contentBox ?? null;
+    if (!selectedPage || !cb || !selectedFitBox) {
+      return;
+    }
+    setPages((current) =>
+      updateLabelPage(current, selectedPage.id, {
+        contentBox: scaleBoxToPercent(cb, selectedFitBox, percent),
+      }),
+    );
+  };
+
+  const onEnhance = (): void => {
+    if (!selectedPage) {
+      return;
+    }
+    const assets = pageSources[selectedPage.id];
+    if (!assets) {
+      return;
+    }
+    void materializePageSource(selectedPage.id, assets.document, { forceEnhance: true }).catch(
+      (error: unknown) => {
+        toast.error(formatError(error));
+      },
+    );
+  };
+  // ────────────────────────────────────────────────────────────────────────────
+
   const catalog = useMemo(
     () => mergePrinterCatalog(printers, usbDevices, sppPorts, bleDevices),
     [printers, usbDevices, sppPorts, bleDevices],
@@ -862,7 +1089,7 @@ function AppShell(props: {
       const request: PrintRequest = {
         width: bitmap.width,
         height: bitmap.height,
-        rgba: bitmap.rgba,
+        rgba: printRgbaForProfile(entry.profileId, bitmap.rgba),
         widthMm: entry.widthMm,
         heightMm: entry.heightMm,
         dpi: entry.dpi,
@@ -1024,23 +1251,17 @@ function AppShell(props: {
               source={source}
               sourceUrl={sourcePreview?.url ?? null}
               sourceUrls={sourceUrlsFromMap(pageSources)}
-              sourceWidthPx={sourcePreview?.width ?? 0}
-              sourceHeightPx={sourcePreview?.height ?? 0}
               pages={pages}
               selectedPageId={selectedPage?.id ?? ''}
               widthMm={draft.widthMm}
               heightMm={draft.heightMm}
               dpi={dpi}
-              fitMode={draft.fitMode}
-              rotation={draft.rotation}
               onContentBox={(box) => {
                 if (!selectedPage) {
                   return;
                 }
                 setPages((current) => updateLabelPage(current, selectedPage.id, { contentBox: box }));
               }}
-              onFitMode={(fitMode) => updateDraft({ fitMode })}
-              onRotation={(rotation) => updateDraft({ rotation })}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onSelectPage={setSelectedPageId}
@@ -1129,6 +1350,7 @@ function AppShell(props: {
               onLabelSize={(size) => updateDraft(size)}
               onFile={onFile}
               onOpenDialog={onOpenDialog}
+              showSourcePagePicker={pages.length <= 1}
               onPageChange={(pageNumber) => {
                 if (!selectedPage) {
                   return;
@@ -1151,6 +1373,14 @@ function AppShell(props: {
                 setTemplateName(`${Math.round(draft.widthMm)}×${Math.round(draft.heightMm)}`);
                 setSaveTemplateOpen(true);
               }}
+              showCleanupBanner={
+                selectedSource?.enhanced === true &&
+                selectedPage !== undefined &&
+                !cleanupBannerDismissed.has(selectedPage.id) &&
+                profileColorModel(profile) !== 'inkjet-cmyk'
+              }
+              onRevertCleanup={onRevertCleanup}
+              onDismissCleanup={onDismissCleanup}
               printerName={selectedPrinter?.name ?? null}
               linkState={linkState}
               printDisabled={printDisabled}
@@ -1218,6 +1448,19 @@ function AppShell(props: {
                   onPrint={onPrint}
                   onTest={onTest}
                   onConnectPrinter={openConnectPrinter}
+                  fitMode={draft.fitMode}
+                  rotation={draft.rotation}
+                  hasSource={selectedPage?.hasSource === true}
+                  sourceIsPdf={selectedSource?.document.mimeType === 'application/pdf'}
+                  isEnhanced={selectedSource?.enhanced === true}
+                  contentScalePercent={contentScalePercent}
+                  contentScaleMin={CONTENT_SCALE_MIN}
+                  contentScaleMax={CONTENT_SCALE_MAX}
+                  onFitMode={(fitMode) => updateDraft({ fitMode })}
+                  onRotation={(rotation) => updateDraft({ rotation })}
+                  onContentScale={onContentScale}
+                  onEnhance={onEnhance}
+                  onRevertEnhance={onRevertCleanup}
                 />
               </div>
             </aside>
@@ -1476,6 +1719,49 @@ function formatError(error: unknown): string {
     return error.message;
   }
   return String(error);
+}
+
+function cloneCanvas(source: HTMLCanvasElement): HTMLCanvasElement {
+  const copy = document.createElement('canvas');
+  copy.width = source.width;
+  copy.height = source.height;
+  const ctx = copy.getContext('2d');
+  if (!ctx) {
+    throw new Error('Canvas 2D context is unavailable');
+  }
+  ctx.drawImage(source, 0, 0);
+  return copy;
+}
+
+function upscaleToPrintFit(
+  source: HTMLCanvasElement,
+  widthMm: number,
+  heightMm: number,
+  dpi: number,
+): HTMLCanvasElement {
+  const fit = computeFitRect(
+    source.width,
+    source.height,
+    mmToDots(widthMm, dpi),
+    mmToDots(heightMm, dpi),
+    'fit',
+  );
+  const targetW = Math.max(source.width, fit.width);
+  const targetH = Math.max(source.height, fit.height);
+  if (targetW === source.width && targetH === source.height) {
+    return cloneCanvas(source);
+  }
+  const out = document.createElement('canvas');
+  out.width = targetW;
+  out.height = targetH;
+  const ctx = out.getContext('2d');
+  if (!ctx) {
+    throw new Error('Canvas 2D context is unavailable');
+  }
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(source, 0, 0, targetW, targetH);
+  return out;
 }
 
 async function composePageBitmap(options: {

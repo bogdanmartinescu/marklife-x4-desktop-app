@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { packBits } from '../../src/bitmap/pack-bits.js';
+import { DEFAULT_BITMAP_ENCODING, X4_BITMAP_ENCODING } from '../../src/bitmap/types.js';
 
 describe('packBits', () => {
   it('packs 8×1 solid black as [0xFF]', () => {
@@ -45,5 +46,15 @@ describe('packBits', () => {
     expect(Array.from(packBits(pixels, 8, 8).data)).toEqual([
       0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55,
     ]);
+  });
+
+  it('uses blackBit 0 for X4 so white pixels set bits (verified X4_05A1)', () => {
+    expect(X4_BITMAP_ENCODING.blackBit).toBe(0);
+    expect(X4_BITMAP_ENCODING.tsplMode).toBe(0);
+    expect(X4_BITMAP_ENCODING.blackBit).not.toBe(DEFAULT_BITMAP_ENCODING.blackBit);
+    const black = new Uint8Array(8).fill(1);
+    const white = new Uint8Array(8).fill(0);
+    expect(Array.from(packBits(black, 8, 1, X4_BITMAP_ENCODING).data)).toEqual([0x00]);
+    expect(Array.from(packBits(white, 8, 1, X4_BITMAP_ENCODING).data)).toEqual([0xff]);
   });
 });

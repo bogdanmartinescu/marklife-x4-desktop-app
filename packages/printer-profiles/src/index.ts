@@ -1,3 +1,4 @@
+import { CANON_INKJET } from './profiles/canon-inkjet.js';
 import { GENERIC_TSPL_203 } from './profiles/generic-tspl-203.js';
 import { MARKLIFE_D210 } from './profiles/marklife-d210.js';
 import { MARKLIFE_P50 } from './profiles/marklife-p50.js';
@@ -19,6 +20,13 @@ export {
   type LabelSizeGroup,
   type PrinterProfile,
 } from './schema.js';
+export {
+  X4_BLE_PRINTER_RX_CHAR_UUID,
+  X4_BLE_PRINTER_SERVICE_UUID,
+  X4_BLE_PRINTER_TX_CHAR_UUID,
+  x4BleWriteTarget,
+} from './x4-ble.js';
+export { CANON_INKJET } from './profiles/canon-inkjet.js';
 export { MARKLIFE_X4 } from './profiles/marklife-x4.js';
 export { MARKLIFE_D210 } from './profiles/marklife-d210.js';
 export { MARKLIFE_P50 } from './profiles/marklife-p50.js';
@@ -31,8 +39,11 @@ export {
   applyProfilePrintSettings,
   labelSizesForMaxWidth,
   labelSizesForProfile,
+  profileColorModel,
+  profileDefaultPrintSettings,
   profileUsesMediaDimensions,
   type MediaMode,
+  type ProfileDefaultPrintSettings,
   type ProfilePrintSettings,
 } from './print-options.js';
 export {
@@ -71,6 +82,7 @@ export type {
 
 export const PROFILES: readonly PrinterProfile[] = [
   MARKLIFE_X4,
+  CANON_INKJET,
   MARKLIFE_D210,
   MARKLIFE_P50,
   PHOMEMO_M110,

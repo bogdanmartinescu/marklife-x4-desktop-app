@@ -10,11 +10,12 @@ export type ProtocolId =
   | 'tspl'
   | 'esc-pos'
   | 'phomemo-m110'
+  | 'cups-png'
   | 'marklife-x4-bt-v7'
   | 'marklife-d210-bt-v5'
   | 'marklife-p50-bt-v3';
 
-export type CodecId = 'raw-mono-1bpp' | 'jbig-t85' | 'marklife-d210';
+export type CodecId = 'raw-mono-1bpp' | 'jbig-t85' | 'marklife-d210' | 'png-rgba';
 
 export type SessionProfileId =
   | 'none'

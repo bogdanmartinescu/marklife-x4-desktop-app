@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   putPageSource,
   releasePageSource,
+  revertEnhancedSource,
   sourceUrlsFromMap,
   type PageSourceAssets,
 } from './page-sources.js';
@@ -45,5 +46,31 @@ describe('page sources', () => {
     expect(revoke).not.toHaveBeenCalled();
     releasePageSource(next, 'page-1', revoke);
     expect(revoke).toHaveBeenCalledWith('blob:shared');
+  });
+
+  it('reverts an enhanced source to the original canvas and clears enhanced', () => {
+    const original = { width: 10, height: 6 } as HTMLCanvasElement;
+    const enhanced = {
+      ...assets('blob:enhanced'),
+      width: 10,
+      height: 6,
+      canvas: { width: 10, height: 6 } as HTMLCanvasElement,
+      originalCanvas: original,
+      enhanced: true,
+    };
+    const reverted = revertEnhancedSource(enhanced, 'blob:original');
+    expect(reverted).toEqual({
+      document,
+      previewUrl: 'blob:original',
+      width: 10,
+      height: 6,
+      canvas: original,
+    });
+    expect(reverted?.enhanced).toBeUndefined();
+    expect(reverted?.originalCanvas).toBeUndefined();
+  });
+
+  it('is a no-op when there is no original canvas', () => {
+    expect(revertEnhancedSource(assets('blob:one'), 'blob:two')).toBeNull();
   });
 });

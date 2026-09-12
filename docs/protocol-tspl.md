@@ -24,7 +24,7 @@ Commands use CRLF. The BITMAP payload is raw bytes written immediately after the
 | Assumption | Value | Status |
 | --- | --- | --- |
 | Bit order | MSB-first (x=0 → bit 7) | Unverified |
-| Black polarity | 1 = black | Unverified |
+| Black polarity | 1 = black (default); X4 inverts RGBA before encode | X4 2026-09-11 |
 | TSPL BITMAP mode | 1 | Unverified |
 | Row alignment | 1 byte | Unverified |
 

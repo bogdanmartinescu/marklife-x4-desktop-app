@@ -92,6 +92,11 @@ pub fn print_config_from_params(params: &Value) -> Result<PrintConfig, BridgeErr
         bt_tx_char_uuid: optional_string(params, "btTxCharUuid"),
         bt_write_mode: optional_string(params, "btWriteMode"),
         bt_local_name: optional_string(params, "btLocalName"),
+        raw_job: params
+            .get("rawJob")
+            .and_then(Value::as_bool)
+            .unwrap_or(true),
+        cups_media: optional_string(params, "cupsMedia"),
     })
 }
 

@@ -4,6 +4,7 @@ import {
   DEFAULT_D210_PRINT_SETTINGS,
   getProfile,
   MARKLIFE_X4,
+  profileDefaultPrintSettings,
 } from '@thermalbridge/printer-profiles';
 import type { AppSettings } from '@thermalbridge/shared';
 import type { PrintDraft } from './types.js';
@@ -34,5 +35,15 @@ export function applySettingsToDraft(
     d210: applyD210PrintSettings(current.d210 ?? DEFAULT_D210_PRINT_SETTINGS),
   };
   const profile = getProfile(merged.profileId) ?? MARKLIFE_X4;
-  return { ...merged, ...applyProfilePrintSettings(profile, merged), d210: merged.d210 };
+  const defaults = profileDefaultPrintSettings(profile);
+  const paper =
+    !options.preserveLabelSize && defaults.widthMm !== undefined && defaults.heightMm !== undefined
+      ? { widthMm: defaults.widthMm, heightMm: defaults.heightMm }
+      : {};
+  return {
+    ...merged,
+    ...applyProfilePrintSettings(profile, merged),
+    ...paper,
+    d210: merged.d210,
+  };
 }

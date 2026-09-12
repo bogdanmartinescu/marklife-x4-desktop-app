@@ -74,21 +74,21 @@ describe('resolveRoute', () => {
     expect(result.route.session).toBe('raw-stream');
   });
 
-  it('does not create a canonical X4 BLE route even if BLE is advertised', () => {
-    const absent = resolveRoute({
+  it('uses experimental TSPL on X4 BLE after a physical X4 advertisement', () => {
+    const result = resolveRoute({
       modelId: 'marklife-x4',
       transport: 'bluetooth-ble',
     });
-    const advertised = resolveRoute({
-      modelId: 'marklife-x4',
-      transport: 'bluetooth-ble',
-      advertised: { ble: true },
-    });
-    expect(absent.kind).toBe('unsupported');
-    expect(advertised.kind).toBe('unsupported');
-    if (absent.kind === 'unsupported') {
-      expect(absent.reason).toMatch(/BLE/i);
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') {
+      return;
     }
+    expect(result.route.id).toBe('x4-ble-raw-tspl');
+    expect(result.route.protocol).toBe('tspl');
+    expect(result.route.codec).toBe('raw-mono-1bpp');
+    expect(result.route.session).toBe('raw-stream');
+    expect(result.route.status).toBe('experimental');
+    expect(result.route.protocol).not.toBe('marklife-x4-bt-v7');
   });
 
   it('selects ESC/POS for D210 OS/USB/TCP routes and does not use TSPL', () => {
@@ -163,5 +163,26 @@ describe('resolveRoute', () => {
     expect(result.route.protocol).toBe('phomemo-m110');
     expect(result.route.codec).toBe('raw-mono-1bpp');
     expect(result.route.session).toBe('phomemo-ble-paced');
+  });
+
+  it('sends Canon inkjet jobs as a CUPS document PNG, not TSPL', () => {
+    const result = resolveRoute({
+      modelId: 'canon-inkjet',
+      transport: 'cups',
+    });
+    expect(result.kind).toBe('resolved');
+    if (result.kind !== 'resolved') {
+      return;
+    }
+    expect(result.route.protocol).toBe('cups-png');
+    expect(result.route.codec).toBe('png-rgba');
+    expect(result.route.protocol).not.toBe('tspl');
+  });
+
+  it('does not invent Canon USB or Bluetooth routes', () => {
+    expect(resolveRoute({ modelId: 'canon-inkjet', transport: 'usb' }).kind).toBe('unsupported');
+    expect(resolveRoute({ modelId: 'canon-inkjet', transport: 'bluetooth-ble' }).kind).toBe(
+      'unsupported',
+    );
   });
 });

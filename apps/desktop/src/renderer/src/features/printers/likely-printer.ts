@@ -2,7 +2,11 @@ import { advertisedNameMatches, portNameLooksLikePrinter } from '@thermalbridge/
 import type { PrinterInfo } from '@thermalbridge/shared';
 
 export function isLikelyPrinterName(name: string): boolean {
-  return advertisedNameMatches(name) || portNameLooksLikePrinter(name);
+  return (
+    advertisedNameMatches(name) ||
+    portNameLooksLikePrinter(name) ||
+    name.toLowerCase().includes('canon')
+  );
 }
 
 function rssiRank(device: PrinterInfo): number {

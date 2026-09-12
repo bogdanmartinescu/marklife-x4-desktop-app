@@ -8,8 +8,9 @@ import {
   type MediaMode,
   type TransportKind,
 } from '@thermalbridge/printer-profiles';
+import type { FitMode, Rotation } from '@thermalbridge/thermal-core';
 import type { PrinterInfo } from '@thermalbridge/shared';
-import { Bluetooth } from 'lucide-react';
+import { Bluetooth, RotateCcw, RotateCw, Sparkles, Undo2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
@@ -32,6 +33,13 @@ import { cn } from '@/lib/utils.js';
 import type { PrintDraft } from '@/state/types.js';
 import { D210AdvancedFields, D210PrintFields } from './D210PrintFields.js';
 
+function rotateCw(r: Rotation): Rotation {
+  return ((r + 90) % 360) as Rotation;
+}
+function rotateCcw(r: Rotation): Rotation {
+  return ((r + 270) % 360) as Rotation;
+}
+
 interface PrintPaneProps {
   draft: PrintDraft;
   printers: PrinterInfo[];
@@ -43,6 +51,20 @@ interface PrintPaneProps {
   onTest: () => void;
   onConnectPrinter: () => void;
   className?: string;
+  // Image section
+  fitMode: FitMode;
+  rotation: Rotation;
+  hasSource: boolean;
+  sourceIsPdf: boolean;
+  isEnhanced: boolean;
+  contentScalePercent: number | null;
+  contentScaleMin: number;
+  contentScaleMax: number;
+  onFitMode: (mode: FitMode) => void;
+  onRotation: (rotation: Rotation) => void;
+  onContentScale: (percent: number) => void;
+  onEnhance: () => void;
+  onRevertEnhance: () => void;
 }
 
 const NONE = '__none__';
@@ -53,9 +75,10 @@ const MEDIA_KEYS: Record<MediaMode, MessageKey> = {
   continuous: 'mediaContinuous',
 };
 
-const LANGUAGE_KEYS: Record<'tspl' | 'esc-pos' | 'unknown', MessageKey> = {
+const LANGUAGE_KEYS: Record<'tspl' | 'esc-pos' | 'os-document' | 'unknown', MessageKey> = {
   tspl: 'profileLanguageTspl',
   'esc-pos': 'profileLanguageEscPos',
+  'os-document': 'profileLanguageOsDocument',
   unknown: 'profileLanguageUnknown',
 };
 
@@ -65,6 +88,7 @@ export function PrintPane(props: PrintPaneProps) {
   const selectedPrinter = props.printers.find((item) => item.id === props.draft.printerId);
   const isX4 = props.draft.profileId === MARKLIFE_X4.id;
   const isD210 = props.draft.profileId === MARKLIFE_D210.id;
+  const isOsDocument = profile.language === 'os-document';
   const isSpp = selectedPrinter?.backend === 'bluetooth-spp';
   const transport = selectedPrinter?.backend as TransportKind | undefined;
   const resolvedRoute =
@@ -167,9 +191,7 @@ export function PrintPane(props: PrintPaneProps) {
           ) : null}
           {unsupportedReason ? (
             <Alert>
-              <AlertDescription>
-                {isX4 && transport === 'bluetooth-ble' ? t('x4BleUnsupported') : unsupportedReason}
-              </AlertDescription>
+              <AlertDescription>{unsupportedReason}</AlertDescription>
             </Alert>
           ) : null}
           {planned ? (
@@ -260,7 +282,107 @@ export function PrintPane(props: PrintPaneProps) {
           ) : null}
         </Section>
 
-        {isD210 ? null : (
+        {/* ── Image section ─────────────────────────────────────────────────── */}
+        <Section title={t('printSectionImage')}>
+          <Field label={t('fit')}>
+            <Select
+              value={props.fitMode}
+              onValueChange={(v) => props.onFitMode(v as FitMode)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fit">{t('fitFit')}</SelectItem>
+                <SelectItem value="fill">{t('fitFill')}</SelectItem>
+                <SelectItem value="actual">{t('fitActual')}</SelectItem>
+                <SelectItem value="stretch">{t('fitStretch')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+
+          {profile.transforms.rotation ? (
+            <Field label={`${t('rotateLabel')} (${props.rotation}°)`}>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  className="flex-1 border-white/5"
+                  aria-label="Rotate left 90°"
+                  onClick={() => props.onRotation(rotateCcw(props.rotation))}
+                >
+                  <RotateCcw className="mr-1 h-3 w-3" />
+                  −90°
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  className="flex-1 border-white/5"
+                  aria-label="Rotate right 90°"
+                  onClick={() => props.onRotation(rotateCw(props.rotation))}
+                >
+                  +90°
+                  <RotateCw className="ml-1 h-3 w-3" />
+                </Button>
+              </div>
+            </Field>
+          ) : null}
+
+          {props.contentScalePercent !== null ? (
+            <Field label={`${t('scalePct')} (${props.contentScalePercent}%)`}>
+              <div className="flex items-center gap-2">
+                <Slider
+                  min={props.contentScaleMin}
+                  max={props.contentScaleMax}
+                  step={1}
+                  value={[props.contentScalePercent]}
+                  className="flex-1"
+                  onValueChange={(value) => props.onContentScale(value[0] ?? 100)}
+                />
+                <Input
+                  type="number"
+                  min={props.contentScaleMin}
+                  max={props.contentScaleMax}
+                  value={props.contentScalePercent}
+                  className="w-16 shrink-0 text-center"
+                  onChange={(event) => {
+                    const v = Number(event.target.value);
+                    if (Number.isFinite(v) && v > 0) {
+                      props.onContentScale(Math.min(props.contentScaleMax, Math.max(props.contentScaleMin, v)));
+                    }
+                  }}
+                />
+              </div>
+            </Field>
+          ) : null}
+
+          {props.hasSource && !props.sourceIsPdf && !isOsDocument ? (
+            props.isEnhanced ? (
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md border border-white/5 bg-ink-800/60 px-2.5 py-2 text-ui-sm transition-colors hover:bg-ink-750"
+                onClick={props.onRevertEnhance}
+              >
+                <Undo2 className="h-3.5 w-3.5 shrink-0 text-ink-400" />
+                {t('photoCleanupRevert')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                title={t('enhanceImageHint')}
+                className="flex w-full items-center gap-2 rounded-md border border-white/5 bg-ink-800/60 px-2.5 py-2 text-ui-sm transition-colors hover:bg-ink-750"
+                onClick={props.onEnhance}
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-ink-400" />
+                {t('enhanceImage')}
+              </button>
+            )
+          ) : null}
+        </Section>
+
+        {isD210 || isOsDocument ? null : (
         <Section title={t('printSectionQuality')}>
           <Field
             label={`${t('density')} (${props.draft.density})`}

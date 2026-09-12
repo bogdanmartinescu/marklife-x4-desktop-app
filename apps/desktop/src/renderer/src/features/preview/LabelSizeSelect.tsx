@@ -26,12 +26,13 @@ interface LabelSizeSelectProps {
 }
 
 const GROUP_KEYS: Record<LabelSizeGroup, MessageKey> = {
+  shipping: 'sizeGroupShipping',
   documents: 'sizeGroupDocuments',
   roll: 'sizeGroupRoll',
   labels: 'sizeGroupLabels',
 };
 
-const GROUP_ORDER: readonly LabelSizeGroup[] = ['documents', 'roll', 'labels'];
+const GROUP_ORDER: readonly LabelSizeGroup[] = ['shipping', 'documents', 'roll', 'labels'];
 
 export function LabelSizeSelect(props: LabelSizeSelectProps) {
   const { t } = useI18n();

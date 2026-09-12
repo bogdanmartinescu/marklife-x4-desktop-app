@@ -3,7 +3,8 @@ import { z } from 'zod';
 export const PrinterProfileSchema = z.object({
   id: z.string().min(1),
   displayName: z.string().min(1),
-  language: z.enum(['tspl', 'esc-pos', 'unknown']),
+  language: z.enum(['tspl', 'esc-pos', 'os-document', 'unknown']),
+  colorModel: z.enum(['thermal-mono', 'inkjet-cmyk']).optional(),
   status: z.enum(['available', 'planned']),
   dpi: z.number().positive(),
   density: z.object({
@@ -22,6 +23,17 @@ export const PrinterProfileSchema = z.object({
     default: z.number().positive(),
   }),
   mediaModes: z.array(z.enum(['continuous', 'gap', 'black-mark'])).min(1),
+  mediaDefaults: z
+    .object({
+      mode: z.enum(['continuous', 'gap', 'black-mark']).optional(),
+      widthMm: z.number().positive().optional(),
+      heightMm: z.number().positive().optional(),
+      gapHeightMm: z.number().finite().optional(),
+      gapOffsetMm: z.number().finite().optional(),
+      markHeightMm: z.number().finite().optional(),
+      markOffsetMm: z.number().finite().optional(),
+    })
+    .optional(),
   transforms: z.object({
     rotation: z.boolean(),
     mirror: z.boolean(),
@@ -40,7 +52,7 @@ export const PrinterProfileSchema = z.object({
         widthMm: z.number().positive(),
         heightMm: z.number().positive(),
         displayName: z.string().min(1).optional(),
-        group: z.enum(['documents', 'roll', 'labels']).optional(),
+        group: z.enum(['shipping', 'documents', 'roll', 'labels']).optional(),
       }),
     )
     .optional(),
@@ -48,7 +60,7 @@ export const PrinterProfileSchema = z.object({
 
 export type PrinterProfile = z.infer<typeof PrinterProfileSchema>;
 
-export type LabelSizeGroup = 'documents' | 'roll' | 'labels';
+export type LabelSizeGroup = 'shipping' | 'documents' | 'roll' | 'labels';
 
 export type LabelSize = {
   widthMm: number;

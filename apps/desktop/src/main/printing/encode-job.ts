@@ -1,4 +1,10 @@
-import { resolveRoute, type DiagnosticRouteId, type TransportKind } from '@thermalbridge/printer-profiles';
+import {
+  applyProfilePrintSettings,
+  getProfile,
+  resolveRoute,
+  type DiagnosticRouteId,
+  type TransportKind,
+} from '@thermalbridge/printer-profiles';
 import { ThermalBridgeError, type PrinterBackend } from '@thermalbridge/shared';
 import {
   buildPhomemoM110Job,
@@ -8,6 +14,7 @@ import {
   type BuildPrintJobOptions,
   type RgbaImage,
 } from '@thermalbridge/thermal-core';
+import { encodeRgbaPng } from './encode-png.js';
 
 export async function encodeJobForRoute(options: {
   profileId: string;
@@ -48,7 +55,16 @@ export async function encodeJobForRoute(options: {
   }
 
   if (route.protocol === 'tspl') {
-    return buildPrintJob(options.tspl);
+    return buildPrintJob(clampTsplToProfile(options.profileId, options.tspl));
+  }
+
+  if (route.protocol === 'cups-png') {
+    return encodeRgbaPng({
+      width: options.image.width,
+      height: options.image.height,
+      data: options.image.data,
+      dpi: options.tspl.dpi,
+    });
   }
 
   if (route.protocol === 'phomemo-m110') {
@@ -81,4 +97,31 @@ export async function encodeJobForRoute(options: {
     'ROUTE_UNSUPPORTED',
     `No encoder is registered for protocol ${route.protocol}`,
   );
+}
+
+function clampTsplToProfile(profileId: string, tspl: BuildPrintJobOptions): BuildPrintJobOptions {
+  const profile = getProfile(profileId);
+  if (profile === undefined) {
+    return tspl;
+  }
+  const transform = tspl.transform;
+  const applied = applyProfilePrintSettings(profile, {
+    density: tspl.density,
+    speed: tspl.speed,
+    mediaMode: tspl.media.mode,
+    offsetXmm: transform?.offsetXmm ?? 0,
+    offsetYmm: transform?.offsetYmm ?? 0,
+    mirrorX: transform?.mirrorX ?? false,
+    mirrorY: transform?.mirrorY ?? false,
+    negative: transform?.negative ?? false,
+    widthMm: tspl.widthMm,
+    heightMm: tspl.heightMm,
+  });
+  return {
+    ...tspl,
+    density: applied.density,
+    speed: applied.speed,
+    widthMm: applied.widthMm,
+    heightMm: applied.heightMm,
+  };
 }

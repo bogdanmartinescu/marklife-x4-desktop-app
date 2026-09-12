@@ -9,6 +9,7 @@ describe('isLikelyPrinterName', () => {
     expect(isLikelyPrinterName('P50 BLE')).toBe(true);
     expect(isLikelyPrinterName('M110')).toBe(true);
     expect(isLikelyPrinterName('Q002E0CP0670069')).toBe(true);
+    expect(isLikelyPrinterName('Canon_TS3300_series')).toBe(true);
     expect(isLikelyPrinterName('AirPods Pro')).toBe(false);
   });
 });

@@ -19,6 +19,7 @@ describe('inferPrinterProfile', () => {
 
   it('maps Marklife advertised names to their own profiles, not Phomemo', () => {
     expect(inferPrinterProfile({ name: 'X4', backend: 'bluetooth-ble' })).toBe('marklife-x4');
+    expect(inferPrinterProfile({ name: 'X4_05A1', backend: 'bluetooth-ble' })).toBe('marklife-x4');
     expect(
       inferPrinterProfile({ name: 'Marklife X4', backend: 'bluetooth-ble' }),
     ).toBe('marklife-x4');
@@ -28,5 +29,18 @@ describe('inferPrinterProfile', () => {
     expect(
       inferPrinterProfile({ name: 'P50R', backend: 'bluetooth-ble' }),
     ).toBe('marklife-p50');
+  });
+
+  it('maps Canon OS-queue names to the inkjet profile, not a thermal language', () => {
+    expect(
+      inferPrinterProfile({ name: 'Canon_TS3300_series', backend: 'cups' }),
+    ).toBe('canon-inkjet');
+    expect(
+      inferPrinterProfile({ name: 'Canon TS3300 series', backend: 'windows-spooler' }),
+    ).toBe('canon-inkjet');
+    expect(inferPrinterProfile({ name: 'Canon_TS3300_series', backend: 'usb' })).toBeUndefined();
+    expect(
+      inferPrinterProfile({ name: 'Canon_TS3300_series', backend: 'bluetooth-ble' }),
+    ).toBeUndefined();
   });
 });

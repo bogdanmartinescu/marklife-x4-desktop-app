@@ -10,13 +10,25 @@ This project is a clean-room compatibility layer. Notes here record *observable*
 
 ## Still unverified on hardware
 
-- BITMAP bit order and polarity
+- BITMAP bit order
+- BITMAP polarity except X4 (RGBA invert before encode, X4_05A1 2026-09-11)
 - Exact printable width in dots
 - GAP / BLINE sensor parameters
 - USB VID/PID, interface, and bulk OUT endpoint
-- BLE GATT service and characteristic UUIDs
+- BLE GATT service and characteristic UUIDs (except X4_05A1 below)
 
 When a physical test confirms a value, write it here with the date and the fixture name, then update `packages/printer-profiles`.
+
+## Marklife X4 (BLE, X4_05A1, 2026-09-11)
+
+Advertised name `X4_05A1`. After connect, three GATT services were present:
+
+- Printer UART `000018f0-…`: notify `00002af0-…`, write `00002af1-…`
+- Marklife profile A `0000ff00-…`: notify `0000ff01-…`, write `0000ff02-…`, notify `0000ff03-…`
+- ISSC profile B `49535343-fe7d-4ae5-8fa9-9fafd205e455`: notify `49535343-1e4d-…249616`, write `49535343-8841-…29bb3`, write+notify `49535343-aca3-…60318`
+- FEIE-style UART `e7810a71-73ae-499d-8c15-faa9aef0c3f2`: write+notify `bef8d6c9-9c21-4c9e-b632-bd58c1009f9f`
+
+Print writes go to `18f0` / `2af1`. A 120039-byte TSPL job returned in ~190 ms before pacing; WithoutResponse + immediate disconnect is too fast for the head. `ff02` must not be used as the X4 job pipe.
 
 ## Phomemo M110 (BLE)
 

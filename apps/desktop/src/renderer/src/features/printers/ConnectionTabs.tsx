@@ -194,7 +194,6 @@ export function ConnectionTabs(props: ConnectionTabsProps) {
             <details className="rounded-lg border border-white/5 bg-ink-850/40 px-3 py-2 text-ui-xs text-ink-400">
               <summary className="cursor-pointer select-none text-ink-300">{t('bleProtocolNotes')}</summary>
               <div className="mt-2 space-y-2 text-ink-400">
-                <p>{t('x4BleUnsupported')}</p>
                 <p>{t('bleHint')}</p>
               </div>
             </details>

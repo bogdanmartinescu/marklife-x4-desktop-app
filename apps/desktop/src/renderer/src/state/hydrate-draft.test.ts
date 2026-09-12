@@ -38,6 +38,20 @@ describe('applySettingsToDraft', () => {
     expect(next.mediaMode).toBe('gap');
   });
 
+  it('uses AWB 100 × 150 mm whenever the X4 profile is applied without a chosen size', () => {
+    const next = applySettingsToDraft(
+      DRAFT,
+      {
+        ...DEFAULT_APP_SETTINGS,
+        defaultLabelSize: { widthMm: 40, heightMm: 30, displayName: '40 × 30 mm' },
+      },
+      { preserveLabelSize: false },
+    );
+    expect(next.profileId).toBe('marklife-x4');
+    expect(next.widthMm).toBe(100);
+    expect(next.heightMm).toBe(150);
+  });
+
   it('keeps the chosen label size when settings load late', () => {
     const next = applySettingsToDraft(DRAFT, DEFAULT_APP_SETTINGS, { preserveLabelSize: true });
     expect(next.widthMm).toBe(50);

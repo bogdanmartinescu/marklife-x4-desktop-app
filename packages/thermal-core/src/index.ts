@@ -3,6 +3,7 @@ export { computeFitRect, type Rect } from './geometry/fit.js';
 
 export {
   DEFAULT_BITMAP_ENCODING,
+  X4_BITMAP_ENCODING,
   type RgbaImage,
   type MonoBitmap,
   type BitmapEncoding,
@@ -23,6 +24,17 @@ export {
 } from './bitmap/rotate.js';
 export { mirrorX, mirrorY } from './bitmap/mirror.js';
 export { negateThreshold } from './bitmap/negative.js';
+export { invertRgba } from './bitmap/invert-rgba.js';
+export { isBelowPrintResolution } from './bitmap/print-resolution.js';
+export { enhanceDocumentRgba } from './bitmap/enhance-document.js';
+export {
+  applyInkjetCmyk,
+  cmykToRgb,
+  prepareInkjetRgba,
+  rgbToCmyk,
+  type Cmyk,
+  type Rgb,
+} from './bitmap/cmyk.js';
 export { buildPrintJob, type BuildPrintJobOptions } from './bitmap/build-print-job.js';
 
 export { BinaryWriter } from './languages/tspl/encoder.js';

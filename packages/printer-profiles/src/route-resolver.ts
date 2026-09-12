@@ -30,6 +30,17 @@ const X4_SPP_TSPL_DIAGNOSTIC: PrinterRoute = {
   status: 'experimental',
 };
 
+/** Physical X4_05A1 advertises BLE. Payload is desktop TSPL until protocol 7 is verified on GATT. */
+const X4_BLE_TSPL: PrinterRoute = {
+  id: 'x4-ble-raw-tspl',
+  modelId: 'marklife-x4',
+  transport: 'bluetooth-ble',
+  protocol: 'tspl',
+  codec: 'raw-mono-1bpp',
+  session: 'raw-stream',
+  status: 'experimental',
+};
+
 export function resolveRoute(input: ResolveRouteInput): ResolveRouteResult {
   if (input.modelId === 'marklife-x4') {
     return resolveX4(input);
@@ -57,7 +68,37 @@ export function resolveRoute(input: ResolveRouteInput): ResolveRouteResult {
   if (input.modelId === 'phomemo-m110') {
     return resolvePhomemoM110(input);
   }
+  if (input.modelId === 'canon-inkjet') {
+    return resolveCanonInkjet(input);
+  }
   return { kind: 'unsupported', reason: `No routes registered for ${input.modelId}` };
+}
+
+const CANON_OS_PNG: PrinterRoute = {
+  id: 'canon-os-png',
+  modelId: 'canon-inkjet',
+  transport: 'cups',
+  protocol: 'cups-png',
+  codec: 'png-rgba',
+  session: 'raw-stream',
+  status: 'candidate',
+};
+
+function resolveCanonInkjet(input: ResolveRouteInput): ResolveRouteResult {
+  switch (input.transport) {
+    case 'cups':
+      return { kind: 'resolved', route: CANON_OS_PNG };
+    case 'windows-spooler':
+      return {
+        kind: 'resolved',
+        route: { ...CANON_OS_PNG, id: 'canon-windows-png', transport: 'windows-spooler' },
+      };
+    default:
+      return {
+        kind: 'unsupported',
+        reason: `Canon inkjet prints through the OS queue only. Use ${input.transport === 'usb' ? 'OS Queue' : 'the OS printer list'}, not ${input.transport}.`,
+      };
+  }
 }
 
 function resolveX4(input: ResolveRouteInput): ResolveRouteResult {
@@ -85,11 +126,7 @@ function resolveX4(input: ResolveRouteInput): ResolveRouteResult {
       }
       return { kind: 'resolved', route: X4_SPP_V7 };
     case 'bluetooth-ble':
-      return {
-        kind: 'unsupported',
-        reason:
-          'No X4 BLE print route exists until a physical X4 revision advertises BLE and protocol 7 is verified on that path.',
-      };
+      return { kind: 'resolved', route: X4_BLE_TSPL };
   }
 }
 

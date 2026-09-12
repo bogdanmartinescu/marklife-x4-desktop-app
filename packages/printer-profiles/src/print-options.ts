@@ -19,11 +19,53 @@ export interface ProfilePrintSettings {
   negative: boolean;
   widthMm: number;
   heightMm: number;
+  gapHeightMm?: number;
+  gapOffsetMm?: number;
+  markHeightMm?: number;
+  markOffsetMm?: number;
+}
+
+export interface ProfileDefaultPrintSettings {
+  density: number;
+  speed: number;
+  mediaMode: MediaMode;
+  widthMm?: number;
+  heightMm?: number;
+  gapHeightMm?: number;
+  gapOffsetMm?: number;
+  markHeightMm?: number;
+  markOffsetMm?: number;
+}
+
+/** Density, speed, and media defaults from the profile (used when the model changes). */
+export function profileDefaultPrintSettings(profile: PrinterProfile): ProfileDefaultPrintSettings {
+  const media = profile.mediaDefaults;
+  const mode = media?.mode;
+  return {
+    density: profile.density.default,
+    speed: profile.speed.default,
+    mediaMode:
+      mode !== undefined && profile.mediaModes.includes(mode)
+        ? mode
+        : (profile.mediaModes[0] ?? 'gap'),
+    ...(media?.widthMm !== undefined ? { widthMm: media.widthMm } : {}),
+    ...(media?.heightMm !== undefined ? { heightMm: media.heightMm } : {}),
+    ...(media?.gapHeightMm !== undefined ? { gapHeightMm: media.gapHeightMm } : {}),
+    ...(media?.gapOffsetMm !== undefined ? { gapOffsetMm: media.gapOffsetMm } : {}),
+    ...(media?.markHeightMm !== undefined ? { markHeightMm: media.markHeightMm } : {}),
+    ...(media?.markOffsetMm !== undefined ? { markOffsetMm: media.markOffsetMm } : {}),
+  };
 }
 
 /** TSPL jobs send GAP/BLINE millimetres. ESC/POS (M110) only sends a media-type byte. */
 export function profileUsesMediaDimensions(profile: PrinterProfile): boolean {
   return profile.language === 'tspl';
+}
+
+export function profileColorModel(
+  profile: PrinterProfile,
+): NonNullable<PrinterProfile['colorModel']> {
+  return profile.colorModel ?? 'thermal-mono';
 }
 
 export function labelSizesForMaxWidth(maxWidthMm: number | undefined): readonly LabelSize[] {
@@ -82,7 +124,9 @@ function resolveLabelSize(
   }
   if (profile.maxWidthMm !== undefined && widthMm > profile.maxWidthMm) {
     const fallback =
-      sizes.find((size) => size.widthMm === 40 && size.heightMm === 30) ?? sizes[0];
+      sizes.find((size) => size.widthMm === 100 && size.heightMm === 150) ??
+      sizes.find((size) => size.widthMm === 40 && size.heightMm === 30) ??
+      sizes[0];
     if (fallback !== undefined) {
       return { widthMm: fallback.widthMm, heightMm: fallback.heightMm };
     }

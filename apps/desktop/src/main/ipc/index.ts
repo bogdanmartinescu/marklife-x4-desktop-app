@@ -20,15 +20,22 @@ import {
   type PrintResult,
   type SystemDiagnostics,
 } from '@thermalbridge/shared';
-import { selectPrintableProfile, type TransportKind } from '@thermalbridge/printer-profiles';
-import { type MediaSettings, type RgbaImage } from '@thermalbridge/thermal-core';
+import {
+  MARKLIFE_X4,
+  resolveRoute,
+  selectPrintableProfile,
+  x4BleWriteTarget,
+  type TransportKind,
+} from '@thermalbridge/printer-profiles';
+import { DEFAULT_BITMAP_ENCODING, type MediaSettings, type RgbaImage } from '@thermalbridge/thermal-core';
 import type { Logger } from '../logger.js';
 import { jobTempDir, logsPath } from '../paths.js';
 import { LibraryStore } from '../library/store.js';
 import { encodeJobForRoute } from '../printing/encode-job.js';
 import { inferTransport } from '../printing/infer-transport.js';
+import { cupsMediaName } from '../printing/cups-media.js';
 import { writeJobFile } from '../printing/job-writer.js';
-import { buildTestPattern } from '../printing/test-pattern.js';
+import { prepareTestPageImage } from '../printing/sample-awb.js';
 import type { BridgeManager } from '../printing/bridge-manager.js';
 import type { SettingsStore } from '../settings/store.js';
 import { AddHistorySchema, AddMediaSchema, BleScanSchema, LibraryIdSchema, PrintRequestSchema, SaveTemplateSchema, TestPrintRequestSchema } from './schemas.js';
@@ -135,7 +142,10 @@ export function registerIpc(options: {
       },
     });
 
-    const extras = bleWriteExtras(route);
+    const extras = {
+      ...bleWriteExtras(route),
+      ...documentJobExtras(route, request.widthMm, request.heightMm),
+    };
     const copies = route.profileId === 'phomemo-m110' ? request.copies : 1;
     let result: PrintResult | undefined;
     for (let index = 0; index < copies; index += 1) {
@@ -150,20 +160,28 @@ export function registerIpc(options: {
       bytes: bytes.length,
       profileId: route.profileId,
       transport: route.transport,
+      bitmapBlackBit: DEFAULT_BITMAP_ENCODING.blackBit,
+      tsplMode: DEFAULT_BITMAP_ENCODING.tsplMode,
+      rgbaInverted: route.profileId === MARKLIFE_X4.id,
     });
     return result;
   });
 
   ipcMain.handle(IpcChannel.PRINT_TEST, async (_event, raw: unknown): Promise<PrintResult> => {
     const request = TestPrintRequestSchema.parse(raw);
-    const image = buildTestPattern(request.widthMm, request.heightMm, request.dpi);
+    const route = routeContext(settings, request.printerId, request.profileId);
+    const image = prepareTestPageImage(
+      route.profileId,
+      request.widthMm,
+      request.heightMm,
+      request.dpi,
+    );
     const media: MediaSettings =
       request.mediaMode === 'continuous'
         ? { mode: 'continuous' }
         : request.mediaMode === 'black-mark'
           ? { mode: 'black-mark', markHeightMm: 3, markOffsetMm: 0 }
           : { mode: 'gap', gapHeightMm: request.gapHeightMm, gapOffsetMm: request.gapOffsetMm };
-    const route = routeContext(settings, request.printerId, request.profileId);
     const bytes = await encodeJobForRoute({
       profileId: route.profileId,
       transport: route.transport,
@@ -186,11 +204,21 @@ export function registerIpc(options: {
       bridge,
       settings,
       request.printerId,
-      'ThermalBridge test page',
+      'ThermalBridge sample AWB',
       bytes,
-      bleWriteExtras(route),
+      {
+        ...bleWriteExtras(route),
+        ...documentJobExtras(route, request.widthMm, request.heightMm),
+      },
     );
     lastPrint.current = result;
+    logger.info('test page submitted', {
+      jobId: result.jobId,
+      bytes: bytes.length,
+      profileId: route.profileId,
+      transport: route.transport,
+      rgbaInverted: route.profileId === MARKLIFE_X4.id,
+    });
     return result;
   });
 
@@ -370,7 +398,14 @@ async function submitJob(
   printerId: string,
   jobName: string,
   bytes: Uint8Array,
-  extras: { btWriteMode?: string } = {},
+  extras: {
+    btWriteMode?: string;
+    btServiceUuid?: string;
+    btTxCharUuid?: string;
+    jobExtension?: string;
+    rawJob?: boolean;
+    cupsMedia?: string;
+  } = {},
 ): Promise<PrintResult> {
   const binding = settings.get().bindings.find((item) => item.printerId === printerId);
   const printers = await safeList(bridge, 'printers.list');
@@ -379,13 +414,14 @@ async function submitJob(
     throw new ThermalBridgeError('NO_PRINTER_SELECTED', 'Select a printer before printing');
   }
 
-  const filePath = writeJobFile(jobTempDir(), bytes);
+  const filePath = writeJobFile(jobTempDir(), bytes, extras.jobExtension ?? 'prn');
   const params: Record<string, unknown> = {
     printerId,
     filePath,
     jobName,
     backend: binding?.backend ?? discovered?.backend ?? defaultBackend(),
     systemName: binding?.systemName ?? discovered?.systemName ?? printerId,
+    rawJob: extras.rawJob ?? true,
   };
   assignOptional(params, 'tcpHost', binding?.tcpHost ?? discovered?.tcpHost);
   assignOptional(params, 'tcpPort', binding?.tcpPort ?? discovered?.tcpPort);
@@ -394,9 +430,10 @@ async function submitJob(
   assignOptional(params, 'usbOutEndpoint', binding?.usbOutEndpoint);
   assignOptional(params, 'serialPort', binding?.serialPort);
   assignOptional(params, 'btAddress', binding?.btAddress);
-  assignOptional(params, 'btServiceUuid', binding?.btServiceUuid);
-  assignOptional(params, 'btTxCharUuid', binding?.btTxCharUuid);
+  assignOptional(params, 'btServiceUuid', extras.btServiceUuid ?? binding?.btServiceUuid);
+  assignOptional(params, 'btTxCharUuid', extras.btTxCharUuid ?? binding?.btTxCharUuid);
   assignOptional(params, 'btWriteMode', extras.btWriteMode);
+  assignOptional(params, 'cupsMedia', extras.cupsMedia);
   assignOptional(
     params,
     'btLocalName',
@@ -432,11 +469,35 @@ function mediaFromRequest(request: z.infer<typeof PrintRequestSchema>): MediaSet
   }
 }
 
+function documentJobExtras(
+  route: { profileId: string; transport: PrinterBackend },
+  widthMm: number,
+  heightMm: number,
+): { jobExtension: string; rawJob: boolean; cupsMedia: string } | Record<string, never> {
+  const resolved = resolveRoute({
+    modelId: route.profileId,
+    transport: route.transport as TransportKind,
+  });
+  if (resolved.kind !== 'resolved' || resolved.route.protocol !== 'cups-png') {
+    return {};
+  }
+  return {
+    jobExtension: 'png',
+    rawJob: false,
+    cupsMedia: cupsMediaName(widthMm, heightMm),
+  };
+}
+
 function bleWriteExtras(route: { profileId: string; transport: PrinterBackend }): {
   btWriteMode?: string;
+  btServiceUuid?: string;
+  btTxCharUuid?: string;
 } {
   if (route.profileId === 'phomemo-m110' && route.transport === 'bluetooth-ble') {
     return { btWriteMode: 'phomemo-m110' };
+  }
+  if (route.profileId === MARKLIFE_X4.id && route.transport === 'bluetooth-ble') {
+    return x4BleWriteTarget();
   }
   return {};
 }

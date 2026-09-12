@@ -34,6 +34,11 @@ pub const PROFILE_B_SERVICE_UUID: &str = "49535343-fe7d-4ae5-8fa9-9fafd205e455";
 pub const PHOMEMO_FFE0_SERVICE_UUID: &str = "0000ffe0-0000-1000-8000-00805f9b34fb";
 pub const PHOMEMO_AE30_SERVICE_UUID: &str = "0000ae30-0000-1000-8000-00805f9b34fb";
 
+/// 4-inch printer UART observed on X4_05A1 (write 2af1, notify 2af0).
+pub const PRINTER_UART_SERVICE_UUID: &str = "000018f0-0000-1000-8000-00805f9b34fb";
+pub const PRINTER_UART_RX_CHAR_UUID: &str = "00002af0-0000-1000-8000-00805f9b34fb";
+pub const PRINTER_UART_TX_CHAR_UUID: &str = "00002af1-0000-1000-8000-00805f9b34fb";
+
 const DEFAULT_CHUNK: usize = 20;
 const PHOMEMO_CHUNK: usize = 128;
 
@@ -138,6 +143,7 @@ pub fn looks_like_phomemo_serial(name: &str) -> bool {
 
 pub fn advertised_service_uuid(services: &[Uuid]) -> Option<String> {
     const KNOWN: &[(&str, &str)] = &[
+        (PRINTER_UART_SERVICE_UUID, PRINTER_UART_SERVICE_UUID),
         (PROFILE_A_SERVICE_UUID, PROFILE_A_SERVICE_UUID),
         (PROFILE_B_SERVICE_UUID, PROFILE_B_SERVICE_UUID),
         (PHOMEMO_FFE0_SERVICE_UUID, PHOMEMO_FFE0_SERVICE_UUID),
@@ -385,6 +391,13 @@ pub async fn send(config: &PrintConfig, bytes: &[u8]) -> Result<(), BridgeError>
         let flush_ms = phomemo_flush_ms(bytes.len());
         eprintln!("printbridge BLE phomemo flush {flush_ms}ms before disconnect");
         tokio::time::sleep(Duration::from_millis(flush_ms)).await;
+    } else if is_printer_uart_tx(characteristic.uuid) {
+        subscribe_printer_uart_notify(&peripheral).await;
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        write_printer_uart_paced(&peripheral, &characteristic, bytes, write_type).await?;
+        let flush_ms = printer_uart_flush_ms(bytes.len());
+        eprintln!("printbridge BLE printer-uart flush {flush_ms}ms before disconnect");
+        tokio::time::sleep(Duration::from_millis(flush_ms)).await;
     } else {
         for chunk in bytes.chunks(DEFAULT_CHUNK) {
             peripheral
@@ -436,6 +449,74 @@ fn phomemo_chunk_write_type(properties: &CharPropFlags, is_command: bool) -> Wri
     } else {
         WriteType::WithResponse
     }
+}
+
+const PRINTER_UART_CHUNK: usize = 128;
+
+fn is_printer_uart_tx(uuid: Uuid) -> bool {
+    Uuid::parse_str(PRINTER_UART_TX_CHAR_UUID).is_ok_and(|expected| uuid == expected)
+}
+
+fn printer_uart_flush_ms(payload_len: usize) -> u64 {
+    (2_000 + payload_len as u64 / 20).clamp(3_000, 12_000)
+}
+
+async fn subscribe_printer_uart_notify(peripheral: &btleplug::platform::Peripheral) {
+    let Ok(notify_uuid) = Uuid::parse_str(PRINTER_UART_RX_CHAR_UUID) else {
+        return;
+    };
+    let Some(characteristic) = peripheral
+        .characteristics()
+        .into_iter()
+        .find(|item| item.uuid == notify_uuid && item.properties.contains(CharPropFlags::NOTIFY))
+    else {
+        return;
+    };
+    if let Err(error) = peripheral.subscribe(&characteristic).await {
+        eprintln!("printbridge BLE printer-uart notify subscribe failed: {error}");
+    }
+}
+
+async fn write_printer_uart_paced(
+    peripheral: &btleplug::platform::Peripheral,
+    characteristic: &btleplug::api::Characteristic,
+    bytes: &[u8],
+    write_type: WriteType,
+) -> Result<(), BridgeError> {
+    let chunks: Vec<&[u8]> = bytes.chunks(PRINTER_UART_CHUNK).collect();
+    let last = chunks.len().saturating_sub(1);
+    eprintln!(
+        "printbridge BLE printer-uart write bytes={} chunks={} char={}",
+        bytes.len(),
+        chunks.len(),
+        characteristic.uuid
+    );
+    for (index, chunk) in chunks.iter().enumerate() {
+        peripheral
+            .write(characteristic, chunk, write_type)
+            .await
+            .map_err(|error| {
+                BridgeError::new(
+                    "PRINT_WRITE_FAILED",
+                    format!(
+                        "BLE write failed at chunk {index}/{}: {error}",
+                        chunks.len()
+                    ),
+                )
+            })?;
+        if index < last {
+            tokio::time::sleep(Duration::from_millis(8)).await;
+        }
+        if index == 0 || index == last || (index + 1) % 50 == 0 {
+            eprintln!(
+                "printbridge BLE printer-uart wrote chunk {}/{} ({} bytes)",
+                index + 1,
+                chunks.len(),
+                chunk.len()
+            );
+        }
+    }
+    Ok(())
 }
 
 fn phomemo_flush_ms(payload_len: usize) -> u64 {
@@ -509,6 +590,21 @@ async fn write_phomemo_paced(
     Ok(())
 }
 
+pub fn select_write_characteristic_uuid(
+    available: &[Uuid],
+    configured_tx: Uuid,
+    require_known_profile: bool,
+) -> Option<Uuid> {
+    let printer_tx = Uuid::parse_str(PRINTER_UART_TX_CHAR_UUID).ok()?;
+    if !require_known_profile && available.iter().any(|uuid| *uuid == printer_tx) {
+        return Some(printer_tx);
+    }
+    if available.iter().any(|uuid| *uuid == configured_tx) {
+        return Some(configured_tx);
+    }
+    None
+}
+
 fn find_write_characteristic(
     peripheral: &btleplug::platform::Peripheral,
     tx_uuid: Uuid,
@@ -516,6 +612,15 @@ fn find_write_characteristic(
     require_known_profile: bool,
 ) -> Result<btleplug::api::Characteristic, BridgeError> {
     let characteristics = peripheral.characteristics();
+    let available: Vec<Uuid> = characteristics.iter().map(|item| item.uuid).collect();
+    if let Some(preferred) =
+        select_write_characteristic_uuid(&available, tx_uuid, require_known_profile)
+    {
+        if let Some(item) = characteristics.iter().find(|item| item.uuid == preferred) {
+            eprintln!("printbridge BLE write characteristic uuid={preferred}");
+            return Ok(item.clone());
+        }
+    }
     if let Some(item) = characteristics.iter().find(|item| item.uuid == tx_uuid) {
         return Ok(item.clone());
     }
@@ -697,5 +802,42 @@ mod tests {
             Some(PROFILE_A_SERVICE_UUID)
         );
         assert_eq!(advertised_service_uuid(&[]), None);
+    }
+
+    #[test]
+    fn prefers_printer_uart_2af1_on_x4_style_gatt() {
+        let uart = Uuid::parse_str(PRINTER_UART_TX_CHAR_UUID).expect("uuid");
+        let ff02 = Uuid::parse_str(PROFILE_A_TX_CHAR_UUID).expect("uuid");
+        assert_eq!(
+            select_write_characteristic_uuid(&[ff02, uart], ff02, false),
+            Some(uart)
+        );
+    }
+
+    #[test]
+    fn keeps_ff02_when_phomemo_requires_profile_a() {
+        let uart = Uuid::parse_str(PRINTER_UART_TX_CHAR_UUID).expect("uuid");
+        let ff02 = Uuid::parse_str(PROFILE_A_TX_CHAR_UUID).expect("uuid");
+        assert_eq!(
+            select_write_characteristic_uuid(&[ff02, uart], ff02, true),
+            Some(ff02)
+        );
+    }
+
+    #[test]
+    fn records_printer_uart_service_ahead_of_profile_a() {
+        let uart = Uuid::parse_str(PRINTER_UART_SERVICE_UUID).expect("uuid");
+        let profile_a = Uuid::parse_str(PROFILE_A_SERVICE_UUID).expect("uuid");
+        assert_eq!(
+            advertised_service_uuid(&[profile_a, uart]).as_deref(),
+            Some(PRINTER_UART_SERVICE_UUID)
+        );
+    }
+
+    #[test]
+    fn printer_uart_flush_waits_for_a_120kb_x4_job() {
+        assert_eq!(printer_uart_flush_ms(100), 3_000);
+        assert_eq!(printer_uart_flush_ms(120_039), 8_001);
+        assert_eq!(printer_uart_flush_ms(400_000), 12_000);
     }
 }

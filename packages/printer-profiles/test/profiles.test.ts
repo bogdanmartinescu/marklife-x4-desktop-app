@@ -3,6 +3,7 @@ import { GENERIC_TSPL_203 } from '../src/profiles/generic-tspl-203.js';
 import { MARKLIFE_D210 } from '../src/profiles/marklife-d210.js';
 import { MARKLIFE_P50 } from '../src/profiles/marklife-p50.js';
 import { MARKLIFE_X4 } from '../src/profiles/marklife-x4.js';
+import { CANON_INKJET } from '../src/profiles/canon-inkjet.js';
 import { PHOMEMO_M110 } from '../src/profiles/phomemo-m110.js';
 import {
   DEFAULT_LABEL_SIZES,
@@ -20,6 +21,54 @@ describe('printer profiles', () => {
     expect(parsed.id).toBe('marklife-x4');
     expect(parsed.language).toBe('tspl');
     expect(parsed.dpi).toBe(203);
+    expect(parsed.status).toBe('available');
+    expect(parsed.maxWidthMm).toBe(110);
+    expect(parsed.mediaModes).toEqual(['continuous', 'gap', 'black-mark']);
+    expect(parsed.mediaDefaults).toEqual({
+      mode: 'gap',
+      widthMm: 100,
+      heightMm: 150,
+      gapHeightMm: 2,
+      gapOffsetMm: 0,
+      markHeightMm: 3,
+      markOffsetMm: 0,
+    });
+    expect(parsed.speed.values).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(parsed.speed.default).toBe(4);
+    expect(parsed.density.min).toBe(0);
+    expect(parsed.density.max).toBe(15);
+    expect(parsed.transforms).toEqual({ rotation: true, mirror: true, negative: true });
+    expect(parsed.offsets).toEqual({ minXmm: -20, maxXmm: 20, minYmm: -20, maxYmm: 20 });
+  });
+
+  it('lists X4 shipping, roll, and small-label stock without A4-wide paper', () => {
+    const parsed = PrinterProfileSchema.parse(MARKLIFE_X4);
+    const keys = (parsed.labelSizes ?? []).map((size) => `${size.widthMm}x${size.heightMm}`);
+    expect(keys[0]).toBe('100x150');
+    expect(parsed.labelSizes?.[0]?.displayName).toBe('AWB 100 × 150 mm');
+    expect(keys).toContain('101.6x152.4');
+    expect(keys).toContain('100x100');
+    expect(keys).toContain('100x120');
+    expect(keys).toContain('100x200');
+    expect(keys).toContain('100x250');
+    expect(keys).toContain('50.8x25.4');
+    expect(keys).toContain('76.2x50.8');
+    expect(keys).toContain('101.6x330.2');
+    expect(keys).toContain('50x100');
+    expect(keys).toContain('58x100');
+    expect(keys).toContain('40x30');
+    expect(keys).toContain('50x30');
+    expect(keys).toContain('30x20');
+    expect(keys).not.toContain('20x15');
+    expect(keys).not.toContain('210x297');
+    expect(keys).not.toContain('148x210');
+    expect(keys).not.toContain('215.9x279.4');
+    expect(parsed.labelSizes?.every((size) => size.widthMm <= 110)).toBe(true);
+    expect(parsed.labelSizes?.every((size) => size.widthMm >= 30)).toBe(true);
+    expect(parsed.labelSizes?.some((size) => size.group === 'shipping')).toBe(true);
+    expect(parsed.labelSizes?.some((size) => size.group === 'roll')).toBe(true);
+    expect(parsed.labelSizes?.some((size) => size.group === 'labels')).toBe(true);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 
   it('uses density.default === 14 as the app UI default for Marklife X4', () => {
@@ -116,6 +165,18 @@ describe('printer profiles', () => {
     expect(parsed.labelSizes?.some((size) => size.widthMm === 50 && size.heightMm === 30)).toBe(
       true,
     );
+  });
+
+  it('registers Canon inkjet as an OS-document profile with A4 default paper', () => {
+    const parsed = PrinterProfileSchema.parse(CANON_INKJET);
+    expect(parsed.id).toBe('canon-inkjet');
+    expect(parsed.language).toBe('os-document');
+    expect(parsed.colorModel).toBe('inkjet-cmyk');
+    expect(parsed.status).toBe('available');
+    expect(parsed.dpi).toBe(300);
+    expect(parsed.mediaDefaults?.widthMm).toBe(210);
+    expect(parsed.mediaDefaults?.heightMm).toBe(297);
+    expect(parsed.labelSizes?.[0]).toMatchObject({ widthMm: 210, heightMm: 297, group: 'documents' });
   });
 
   it('clamps label width to the printer head when a profile sets maxWidthMm', () => {

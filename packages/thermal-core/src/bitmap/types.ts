@@ -27,4 +27,15 @@ export const DEFAULT_BITMAP_ENCODING: BitmapEncoding = {
   tsplMode: 1,
 };
 
+/**
+ * Firmware polarity if applied at pack time (X4_05A1 2026-09-11).
+ * Live X4 jobs invert RGBA in the renderer instead so Electron HMR can apply it.
+ */
+export const X4_BITMAP_ENCODING: BitmapEncoding = {
+  bitOrder: 'msb-first',
+  blackBit: 0,
+  rowAlignmentBytes: 1,
+  tsplMode: 0,
+};
+
 export type DitherMode = 'threshold' | 'floyd-steinberg';

@@ -1,21 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactElement } from 'react';
 import type { LabelSize } from '@thermalbridge/printer-profiles';
-import type { FitMode, Rotation } from '@thermalbridge/thermal-core';
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button.js';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select.js';
-import { Slider } from '@/components/ui/slider.js';
 import { EditorDock } from '@/features/editor/EditorDock.js';
 import { EditorIconPicker } from '@/features/editor/EditorIconPicker.js';
 import { EditorPageStack } from '@/features/editor/EditorPageStack.js';
 import { EditorPalette } from '@/features/editor/EditorPalette.js';
 import { EditorTopChrome } from '@/features/editor/EditorTopChrome.js';
+import { PhotoCleanupBanner } from '@/features/preview/PhotoCleanupBanner.js';
 import type { LabelPage } from '@/features/editor/label-pages.js';
 import type { OverlayElement } from '@/features/editor/overlay.js';
 import { normalizeImportedImage } from '@/features/editor/svg-source.js';
@@ -24,15 +16,7 @@ import type { LinkState } from '@/features/printers/connection-status.js';
 import { useI18n } from '@/i18n/I18nProvider.js';
 import { cn } from '@/lib/utils.js';
 import type { SourceDocument } from '@/state/types.js';
-import {
-  CONTENT_SCALE_MAX,
-  CONTENT_SCALE_MIN,
-  boxFromFit,
-  contentOverflowMm,
-  scaleBoxToPercent,
-  scalePercentFromBox,
-  type ContentBox,
-} from './content-placement.js';
+import { contentOverflowMm, type ContentBox } from './content-placement.js';
 import {
   PREVIEW_ZOOM_DEFAULT,
   PREVIEW_ZOOM_MAX,
@@ -48,23 +32,17 @@ interface PreviewPaneProps {
   source: SourceDocument | null;
   sourceUrl: string | null;
   sourceUrls: Readonly<Record<string, string>>;
-  sourceWidthPx: number;
-  sourceHeightPx: number;
   pages: LabelPage[];
   selectedPageId: string;
   selectedId: string | null;
   widthMm: number;
   heightMm: number;
   dpi: number;
-  fitMode: FitMode;
-  rotation: Rotation;
   printerName: string | null;
   linkState: LinkState;
   printDisabled: boolean;
   busy: boolean;
   onContentBox: (box: ContentBox) => void;
-  onFitMode: (mode: FitMode) => void;
-  onRotation: (rotation: Rotation) => void;
   onSelect: (id: string | null) => void;
   onOverlayChange: (id: string, patch: Partial<OverlayElement>) => void;
   onAddText: () => void;
@@ -89,14 +67,16 @@ interface PreviewPaneProps {
   onFile: (file: File) => void;
   onOpenDialog: () => void;
   onPageChange: (page: number) => void;
+  showSourcePagePicker?: boolean;
   onPrint: () => void;
   onSaveTemplate: () => void;
+  showCleanupBanner?: boolean;
+  onRevertCleanup?: () => void;
+  onDismissCleanup?: () => void;
   shortcutsEnabled: boolean;
   labelSizes?: readonly LabelSize[];
 }
 
-const FIT_MODES: FitMode[] = ['fit', 'fill', 'actual', 'stretch'];
-const ROTATIONS: Rotation[] = [0, 90, 180, 270];
 const ZOOM_STEP = 5;
 
 export function PreviewPane(props: PreviewPaneProps) {
@@ -114,12 +94,6 @@ export function PreviewPane(props: PreviewPaneProps) {
   const contentBox = selectedPage?.contentBox ?? null;
   const pickImage = (): void => {
     imageInputRef.current?.click();
-  };
-  const fitLabel: Record<FitMode, string> = {
-    fit: t('fitFit'),
-    fill: t('fitFill'),
-    actual: t('fitActual'),
-    stretch: t('fitStretch'),
   };
   const visibleWell = previewVisibleWell(wellSize.width, wellSize.height);
   const labelSize = previewLabelSize({
@@ -146,34 +120,11 @@ export function PreviewPane(props: PreviewPaneProps) {
         pageWidth: labelSize.width,
         pageHeight: labelSize.height,
         pageCount: props.pages.length,
-        gutter: 56,
+        gutter: 88,
         padding: 64 + overflowPad,
         footer: 0,
       })
     : null;
-  const fitBox = useMemo(() => {
-    if (props.sourceWidthPx <= 0 || props.sourceHeightPx <= 0) {
-      return null;
-    }
-    return boxFromFit({
-      sourceWidthPx: props.sourceWidthPx,
-      sourceHeightPx: props.sourceHeightPx,
-      labelWidthMm: props.widthMm,
-      labelHeightMm: props.heightMm,
-      dpi: props.dpi,
-      fitMode: props.fitMode,
-    });
-  }, [
-    props.sourceWidthPx,
-    props.sourceHeightPx,
-    props.widthMm,
-    props.heightMm,
-    props.dpi,
-    props.fitMode,
-  ]);
-  const scalePercent =
-    contentBox && fitBox ? scalePercentFromBox(contentBox, fitBox) : 100;
-
   useEffect(() => {
     const preventWindowFileOpen = (event: Event): void => {
       event.preventDefault();
@@ -293,6 +244,7 @@ export function PreviewPane(props: PreviewPaneProps) {
         busy={props.busy}
         onOpenFile={props.onOpenDialog}
         onPageChange={props.onPageChange}
+        showPagePicker={props.showSourcePagePicker !== false}
         onOpenPalette={() => setPaletteOpen(true)}
         onLabelSize={props.onLabelSize}
         onConnectPrinter={props.onConnectPrinter}
@@ -300,6 +252,9 @@ export function PreviewPane(props: PreviewPaneProps) {
         onSaveTemplate={props.onSaveTemplate}
         {...(props.labelSizes !== undefined ? { labelSizes: props.labelSizes } : {})}
       />
+      {props.showCleanupBanner && props.onRevertCleanup && props.onDismissCleanup ? (
+        <PhotoCleanupBanner onRevert={props.onRevertCleanup} onDismiss={props.onDismissCleanup} />
+      ) : null}
       <div className="flex min-h-0 flex-1 flex-col">
         <input
           ref={imageInputRef}
@@ -354,7 +309,11 @@ export function PreviewPane(props: PreviewPaneProps) {
             >
               <div
                 className="flex justify-center"
-                style={documentSize ?? { minHeight: '100%', minWidth: '100%' }}
+                style={
+                  documentSize
+                    ? { minWidth: documentSize.width, minHeight: documentSize.height }
+                    : { minHeight: '100%', minWidth: '100%' }
+                }
               >
                 <EditorPageStack
                   pages={props.pages}
@@ -378,80 +337,15 @@ export function PreviewPane(props: PreviewPaneProps) {
                 />
               </div>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/5 bg-ink-900 px-3 py-1.5">
-              <p className="min-w-0 truncate text-ui-2xs text-ink-500">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/5 bg-ink-900 px-3 py-1.5">
+              <p className="min-w-0 flex-1 truncate text-ui-2xs text-ink-500">
                 {t('shortcutZoom')}
                 <span className="mx-1.5">·</span>
                 {t('shortcutPalette')}
                 <span className="mx-1.5">·</span>
-                {props.widthMm} × {props.heightMm} mm
-                <span className="mx-1.5">·</span>
-                {props.dpi} DPI
+                {props.widthMm} × {props.heightMm} mm · {props.dpi} DPI
               </p>
-              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-                {contentBox && fitBox && selectedPage?.hasSource ? (
-                  <>
-                    <span className="shrink-0 text-ui-2xs text-ink-400">{t('contentSize')}</span>
-                    <Slider
-                      min={CONTENT_SCALE_MIN}
-                      max={CONTENT_SCALE_MAX}
-                      step={1}
-                      value={[scalePercent]}
-                      aria-label={t('contentSize')}
-                      className="w-24"
-                      onValueChange={(value) => {
-                        if (!contentBox || !fitBox) {
-                          return;
-                        }
-                        props.onContentBox(
-                          scaleBoxToPercent(contentBox, fitBox, value[0] ?? 100),
-                        );
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => {
-                        if (fitBox) {
-                          props.onContentBox(fitBox);
-                        }
-                      }}
-                    >
-                      {t('contentReset')}
-                    </Button>
-                  </>
-                ) : null}
-                <Select
-                  value={props.fitMode}
-                  onValueChange={(value) => props.onFitMode(value as FitMode)}
-                >
-                  <SelectTrigger size="sm" className="h-7 w-[6.5rem] border-white/5 bg-ink-750">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FIT_MODES.map((mode) => (
-                      <SelectItem key={mode} value={mode}>
-                        {fitLabel[mode]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={String(props.rotation)}
-                  onValueChange={(value) => props.onRotation(Number(value) as Rotation)}
-                >
-                  <SelectTrigger size="sm" className="h-7 w-[4.5rem] border-white/5 bg-ink-750">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROTATIONS.map((value) => (
-                      <SelectItem key={value} value={String(value)}>
-                        {value}°
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-1">
                 <Button
                   type="button"
                   variant="ghost"

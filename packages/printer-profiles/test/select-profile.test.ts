@@ -51,4 +51,13 @@ describe('selectPrintableProfile', () => {
       }),
     ).toBe('marklife-x4');
   });
+
+  it('selects X4 for an X4_ BLE advertisement', () => {
+    expect(
+      selectPrintableProfile({
+        transport: 'bluetooth-ble',
+        deviceName: 'X4_05A1',
+      }),
+    ).toBe('marklife-x4');
+  });
 });

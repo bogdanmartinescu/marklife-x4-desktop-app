@@ -1,3 +1,4 @@
+import { isPhomemoAdvertisedName } from './ble-names.js';
 import { inferPrinterProfile } from './infer-profile.js';
 import { resolveRoute } from './route-resolver.js';
 import type { TransportKind } from './routes.js';
@@ -32,6 +33,13 @@ export function selectPrintableProfile(input: {
   );
 
   for (const modelId of candidates) {
+    if (
+      modelId === 'marklife-x4' &&
+      input.transport === 'bluetooth-ble' &&
+      isPhomemoAdvertisedName(input.deviceName ?? '')
+    ) {
+      continue;
+    }
     if (profileHasPrintRoute(modelId, input.transport)) {
       return modelId;
     }

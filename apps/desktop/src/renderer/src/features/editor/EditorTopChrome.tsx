@@ -23,6 +23,7 @@ interface EditorTopChromeProps {
   busy: boolean;
   onOpenFile: () => void;
   onPageChange: (page: number) => void;
+  showPagePicker?: boolean;
   onOpenPalette: () => void;
   onLabelSize: (size: { widthMm: number; heightMm: number }) => void;
   onConnectPrinter: () => void;
@@ -46,7 +47,7 @@ export function EditorTopChrome(props: EditorTopChromeProps) {
         <FileUp className="size-3.5 shrink-0 text-ink-400" />
         <span className="min-w-0 truncate">{source?.name ?? t('addFile')}</span>
       </button>
-      {source !== null && source.pageCount > 1 ? (
+      {source !== null && source.pageCount > 1 && props.showPagePicker !== false ? (
         <Select
           value={String(source.pageNumber)}
           onValueChange={(value) => props.onPageChange(Number(value))}

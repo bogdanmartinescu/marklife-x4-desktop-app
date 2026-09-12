@@ -6,6 +6,25 @@ export interface PageSourceAssets {
   width: number;
   height: number;
   canvas: HTMLCanvasElement;
+  originalCanvas?: HTMLCanvasElement;
+  enhanced?: boolean;
+}
+
+export function revertEnhancedSource(
+  assets: PageSourceAssets,
+  previewUrl: string,
+): PageSourceAssets | null {
+  const original = assets.originalCanvas;
+  if (!original) {
+    return null;
+  }
+  return {
+    document: assets.document,
+    previewUrl,
+    width: original.width,
+    height: original.height,
+    canvas: original,
+  };
 }
 
 export type PageSourceMap = Record<string, PageSourceAssets>;

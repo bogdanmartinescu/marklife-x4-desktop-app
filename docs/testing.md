@@ -13,7 +13,7 @@ Byte-level coverage:
 - BinaryWriter text/binary interleaving
 - TsplJobBuilder golden job with a BITMAP payload
 - grayscale / threshold / Floyd–Steinberg
-- Marklife X4 `density.default === 15`
+- Marklife X4 `density.default === 14`
 
 ## printbridge
 

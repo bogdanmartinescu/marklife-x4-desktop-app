@@ -30,6 +30,22 @@ export function resolveSelectedPage(
   return pages.find((page) => page.id === selectedPageId) ?? pages[0];
 }
 
+/** One stacked canvas per PDF page. Keeps overlays on the first page. */
+export function pagesForImportedPdf(pageCount: number, firstPage?: LabelPage): LabelPage[] {
+  const count = Math.min(LABEL_PAGE_MAX, Math.max(1, Math.floor(pageCount)));
+  const first: LabelPage = firstPage
+    ? { ...firstPage, hasSource: true }
+    : { ...createBlankLabelPage(), hasSource: true };
+  if (count === 1) {
+    return [first];
+  }
+  const rest = Array.from({ length: count - 1 }, () => ({
+    ...createBlankLabelPage(),
+    hasSource: true,
+  }));
+  return [first, ...rest];
+}
+
 /** Attach an imported image to the current canvas without wiping overlays or other pages. */
 export function assignSourceToCurrentPage(pages: LabelPage[], selectedPageId: string): LabelPage[] {
   const target = resolveSelectedPage(pages, selectedPageId);

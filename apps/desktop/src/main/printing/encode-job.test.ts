@@ -29,6 +29,20 @@ function tsplOptions(image: RgbaImage) {
 }
 
 describe('encodeJobForRoute', () => {
+  it('clamps X4 density and speed to the profile before encoding TSPL', async () => {
+    const image = whiteImage(8, 8);
+    const bytes = await encodeJobForRoute({
+      profileId: 'marklife-x4',
+      transport: 'usb',
+      image,
+      tspl: { ...tsplOptions(image), density: 99, speed: 9 },
+    });
+    const text = Buffer.from(bytes).toString('latin1');
+    expect(text).toContain('DENSITY 15');
+    expect(text).toContain('SPEED 8');
+    expect(text).not.toContain('DENSITY 99');
+  });
+
   it('encodes X4 OS-queue jobs as TSPL', async () => {
     const image = whiteImage(8, 8);
     const bytes = await encodeJobForRoute({
@@ -71,19 +85,18 @@ describe('encodeJobForRoute', () => {
     expect(text).toContain('BITMAP');
   });
 
-  it('rejects X4 BLE printing until a verified BLE route exists', async () => {
+  it('encodes experimental TSPL for X4 BLE, not protocol 7', async () => {
     const image = whiteImage(8, 8);
-    await expect(
-      encodeJobForRoute({
-        profileId: 'marklife-x4',
-        transport: 'bluetooth-ble',
-        image,
-        tspl: tsplOptions(image),
-      }),
-    ).rejects.toMatchObject({
-      name: 'ThermalBridgeError',
-      code: 'ROUTE_UNSUPPORTED',
+    const bytes = await encodeJobForRoute({
+      profileId: 'marklife-x4',
+      transport: 'bluetooth-ble',
+      image,
+      tspl: tsplOptions(image),
     });
+    const text = Buffer.from(bytes).toString('latin1');
+    expect(text).toContain('SIZE');
+    expect(text).toContain('BITMAP');
+    expect(text).toContain('DENSITY 14');
   });
 
   it('encodes Phomemo M110 BLE jobs as ESC/POS raster, not TSPL', async () => {
@@ -95,6 +108,18 @@ describe('encodeJobForRoute', () => {
       tspl: tsplOptions(image),
     });
     expect(Array.from(bytes.slice(0, 4))).toEqual([0x1b, 0x4e, 0x0d, 0x04]);
+    expect(Buffer.from(bytes).toString('latin1')).not.toContain('SIZE');
+  });
+
+  it('encodes Canon CUPS jobs as a PNG document, not TSPL', async () => {
+    const image = whiteImage(8, 8);
+    const bytes = await encodeJobForRoute({
+      profileId: 'canon-inkjet',
+      transport: 'cups',
+      image,
+      tspl: tsplOptions(image),
+    });
+    expect(Array.from(bytes.slice(0, 8))).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
     expect(Buffer.from(bytes).toString('latin1')).not.toContain('SIZE');
   });
 

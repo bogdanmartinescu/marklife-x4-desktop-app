@@ -3,10 +3,13 @@ import {
   applyProfilePrintSettings,
   labelSizesForMaxWidth,
   labelSizesForProfile,
+  profileDefaultPrintSettings,
+  profileColorModel,
   profileUsesMediaDimensions,
 } from '../src/print-options.js';
 import { MARKLIFE_D210 } from '../src/profiles/marklife-d210.js';
 import { MARKLIFE_X4 } from '../src/profiles/marklife-x4.js';
+import { CANON_INKJET } from '../src/profiles/canon-inkjet.js';
 import { PHOMEMO_M110 } from '../src/profiles/phomemo-m110.js';
 
 const X4_SETTINGS = {
@@ -26,6 +29,14 @@ describe('profileUsesMediaDimensions', () => {
   it('is true for TSPL (GAP/BLINE millimetres) and false for ESC/POS mode bytes', () => {
     expect(profileUsesMediaDimensions(MARKLIFE_X4)).toBe(true);
     expect(profileUsesMediaDimensions(PHOMEMO_M110)).toBe(false);
+    expect(profileUsesMediaDimensions(CANON_INKJET)).toBe(false);
+  });
+});
+
+describe('profileColorModel', () => {
+  it('treats Canon as inkjet CMYK and thermals as mono', () => {
+    expect(profileColorModel(CANON_INKJET)).toBe('inkjet-cmyk');
+    expect(profileColorModel(MARKLIFE_X4)).toBe('thermal-mono');
   });
 });
 
@@ -60,12 +71,40 @@ describe('labelSizesForProfile', () => {
     expect(keys).not.toContain('210x297');
   });
 
-  it('falls back to the shared list for profiles without a stock list', () => {
-    const keys = labelSizesForProfile(MARKLIFE_X4).map(
-      (size) => `${size.widthMm}x${size.heightMm}`,
-    );
+  it('lists X4 AWB-first stock and hides paper wider than the 110 mm head', () => {
+    const sizes = labelSizesForProfile(MARKLIFE_X4);
+    const keys = sizes.map((size) => `${size.widthMm}x${size.heightMm}`);
+    expect(keys[0]).toBe('100x150');
+    expect(sizes[0]?.displayName).toBe('AWB 100 × 150 mm');
+    expect(keys).toContain('101.6x152.4');
     expect(keys).toContain('40x30');
-    expect(keys).toContain('210x297');
+    expect(keys).toContain('50x30');
+    expect(keys).not.toContain('210x297');
+    expect(sizes.every((size) => size.widthMm <= 110)).toBe(true);
+  });
+});
+
+describe('profileDefaultPrintSettings', () => {
+  it('applies X4 density 14, speed 4, gap media, and gap millimetres', () => {
+    expect(profileDefaultPrintSettings(MARKLIFE_X4)).toEqual({
+      density: 14,
+      speed: 4,
+      mediaMode: 'gap',
+      widthMm: 100,
+      heightMm: 150,
+      gapHeightMm: 2,
+      gapOffsetMm: 0,
+      markHeightMm: 3,
+      markOffsetMm: 0,
+    });
+  });
+
+  it('defaults Canon inkjet paper to A4', () => {
+    expect(profileDefaultPrintSettings(CANON_INKJET)).toMatchObject({
+      mediaMode: 'continuous',
+      widthMm: 210,
+      heightMm: 297,
+    });
   });
 });
 
@@ -86,6 +125,27 @@ describe('applyProfilePrintSettings', () => {
       heightMm: 30,
     });
     expect(next.widthMm).toBe(50);
+    expect(next.heightMm).toBe(30);
+  });
+
+  it('snaps paper wider than the X4 head to AWB 100 × 150 mm', () => {
+    const next = applyProfilePrintSettings(MARKLIFE_X4, {
+      ...X4_SETTINGS,
+      widthMm: 210,
+      heightMm: 297,
+    });
+    expect(next.widthMm).toBe(100);
+    expect(next.heightMm).toBe(150);
+    expect(next.mediaMode).toBe('gap');
+  });
+
+  it('keeps an in-range X4 small label when switching from AWB', () => {
+    const next = applyProfilePrintSettings(MARKLIFE_X4, {
+      ...X4_SETTINGS,
+      widthMm: 40,
+      heightMm: 30,
+    });
+    expect(next.widthMm).toBe(40);
     expect(next.heightMm).toBe(30);
   });
 
@@ -119,6 +179,11 @@ describe('applyProfilePrintSettings', () => {
     expect(next.mirrorX).toBe(false);
     expect(next.mirrorY).toBe(false);
     expect(next.negative).toBe(false);
+  });
+
+  it('keeps a custom in-range X4 density instead of resetting to 14', () => {
+    const next = applyProfilePrintSettings(MARKLIFE_X4, { ...X4_SETTINGS, density: 8 });
+    expect(next.density).toBe(8);
   });
 
   it('clamps offsets to the model range', () => {
