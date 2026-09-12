@@ -2,8 +2,10 @@ import './pdfjs-polyfills.js';
 import { getDocument, type PDFDocumentProxy } from 'pdfjs-dist';
 import { copyToUint8Array } from '../import/source-bytes.js';
 import { installPdfjsWorkerModule } from './pdf-worker-install.js';
+import { installPromiseTry } from './pdfjs-polyfills.js';
 import { installUint8ArrayHex } from './uint8array-hex.js';
 
+installPromiseTry();
 installUint8ArrayHex();
 
 let workerReady: Promise<void> | undefined;
@@ -21,6 +23,7 @@ async function ensurePdfjsWorker(): Promise<void> {
 const cache = new WeakMap<Uint8Array, Promise<PDFDocumentProxy>>();
 
 export async function loadPdf(bytes: Uint8Array): Promise<PDFDocumentProxy> {
+  installPromiseTry();
   installUint8ArrayHex();
   await ensurePdfjsWorker();
   const existing = cache.get(bytes);

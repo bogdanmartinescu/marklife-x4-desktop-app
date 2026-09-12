@@ -10,6 +10,25 @@ interface WeakMapUpsert<K extends object, V> {
   getOrInsertComputed?: (key: K, callbackfn: ComputeFn<K, V>) => V;
 }
 
+type PromiseTry = {
+  try?: <T>(callbackFn: (...args: never[]) => T, ...args: never[]) => Promise<Awaited<T>>;
+};
+
+export function installPromiseTry(): void {
+  const ctor = Promise as PromiseConstructor & PromiseTry;
+  if (typeof ctor.try === 'function') {
+    return;
+  }
+  ctor.try = function promiseTry<T>(
+    callbackFn: (...args: never[]) => T,
+    ...args: never[]
+  ): Promise<Awaited<T>> {
+    return new Promise((resolve) => {
+      resolve(callbackFn(...args));
+    });
+  };
+}
+
 export function installMapGetOrInsertComputed(): void {
   const mapProto = Map.prototype as Map<unknown, unknown> & MapUpsert<unknown, unknown>;
   if (typeof mapProto.getOrInsertComputed !== 'function') {
@@ -46,4 +65,5 @@ export function installMapGetOrInsertComputed(): void {
 }
 
 installMapGetOrInsertComputed();
+installPromiseTry();
 installUint8ArrayHex();

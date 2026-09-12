@@ -23,17 +23,27 @@ function minimalPdf(): Uint8Array {
 }
 
 describe('pdfPageCount', () => {
-  it('opens a one-page PDF without Uint8Array.toHex', async () => {
+  it('opens a one-page PDF without Uint8Array.toHex or Promise.try', async () => {
     const proto = Uint8Array.prototype as Uint8Array & { toHex?: () => string };
-    const original = proto.toHex;
+    const promiseCtor = Promise as PromiseConstructor & {
+      try?: <T>(callbackFn: () => T) => Promise<Awaited<T>>;
+    };
+    const originalHex = proto.toHex;
+    const originalTry = promiseCtor.try;
     delete proto.toHex;
+    delete promiseCtor.try;
     try {
       await expect(pdfPageCount(minimalPdf())).resolves.toBe(1);
     } finally {
-      if (original) {
-        proto.toHex = original;
+      if (originalHex) {
+        proto.toHex = originalHex;
       } else {
         delete proto.toHex;
+      }
+      if (originalTry) {
+        promiseCtor.try = originalTry;
+      } else {
+        delete promiseCtor.try;
       }
     }
   });
