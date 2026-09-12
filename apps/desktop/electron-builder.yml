@@ -8,6 +8,8 @@ files:
   - out/**/*
 publish:
   provider: github
+  owner: bogdanmartinescu
+  repo: marklife-x4-desktop-app
   releaseType: release
 mac:
   category: public.app-category.utilities

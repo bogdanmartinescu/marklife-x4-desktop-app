@@ -40,4 +40,6 @@ electron-builder reads `apps/desktop/package.json` and embeds that version in th
 
 `.github/workflows/release.yml` runs `version:check`, lint, typecheck, coverage (80%), and `cargo test` first. Only then does it build printbridge and package on each OS, verifying the sidecar exists before electron-builder runs.
 
+electron-builder is invoked from `apps/desktop`, which is not the git root. `apps/desktop/package.json` therefore sets `repository`, and `electron-builder.yml` sets `publish.owner` / `publish.repo`. Without those, `--publish never` still tries to write `latest*.yml` and crashes in `computeChannelNames`.
+
 Unsigned alpha builds are expected until `CSC_LINK` / Apple notarization secrets are added. Production signing (Developer ID / notarization / Authenticode) is required before public distribution and is not a blocker for internal alpha builds.
