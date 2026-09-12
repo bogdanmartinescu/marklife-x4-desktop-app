@@ -65,14 +65,26 @@ test('assertReleaseVersion rejects a tag that does not match the package version
   );
 });
 
+test('assertReleaseVersion allows a branch build whose version matches an existing tag', () => {
+  assert.doesNotThrow(() =>
+    assertReleaseVersion({
+      packageVersion: '1.2.1',
+      cargoVersion: '1.2.1',
+      workspaceVersions: ['1.2.1'],
+      previousTags: ['v1.2.0', 'v1.2.1'],
+    }),
+  );
+});
+
 test('assertReleaseVersion rejects a version that was already released', () => {
   assert.throws(
     () =>
       assertReleaseVersion({
-        packageVersion: '0.1.0',
-        cargoVersion: '0.1.0',
-        workspaceVersions: ['0.1.0'],
-        previousTags: ['v0.1.0'],
+        packageVersion: '1.2.0',
+        cargoVersion: '1.2.0',
+        workspaceVersions: ['1.2.0'],
+        currentTag: 'v1.2.0',
+        previousTags: ['v1.2.0', 'v1.2.1'],
       }),
     /already released/,
   );

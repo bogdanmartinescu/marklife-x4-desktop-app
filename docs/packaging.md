@@ -20,11 +20,10 @@ Do not ship vendor `rastertoX4` filters, OEM DLLs, or driver installers.
 
 ## Version
 
-Every release must bump the version. `pnpm version:check` fails if:
+Every release must bump the version. On branch and PR builds, `pnpm version:check` only requires workspace `package.json` versions and `native/printbridge/Cargo.toml` to match. On a `v*` tag it also fails if:
 
-- workspace `package.json` versions and `native/printbridge/Cargo.toml` disagree
 - the git tag is not `v<package version>`
-- that version was already released (`v1.2.0` exists, so the next tag is `v1.2.1`)
+- that version is not newer than every other existing tag (`v1.2.0` exists, so the next tag is `v1.2.1`)
 
 Bump every workspace package and Cargo.toml together:
 

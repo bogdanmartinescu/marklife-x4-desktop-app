@@ -47,11 +47,12 @@ export function assertReleaseVersion(options) {
       throw new Error(`workspace package version ${version} does not match ${packageVersion}`);
     }
   }
-  if (currentTag !== undefined) {
-    const tagged = tagToVersion(currentTag);
-    if (tagged !== packageVersion) {
-      throw new Error(`git tag ${currentTag} does not match package version ${packageVersion}`);
-    }
+  if (currentTag === undefined) {
+    return;
+  }
+  const tagged = tagToVersion(currentTag);
+  if (tagged !== packageVersion) {
+    throw new Error(`git tag ${currentTag} does not match package version ${packageVersion}`);
   }
   const previousVersions = previousTags
     .map((tag) => {
