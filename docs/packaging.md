@@ -23,15 +23,15 @@ Do not ship vendor `rastertoX4` filters, OEM DLLs, or driver installers.
 Every release must bump the version. On branch and PR builds, `pnpm version:check` only requires workspace `package.json` versions and `native/printbridge/Cargo.toml` to match. On a `v*` tag it also fails if:
 
 - the git tag is not `v<package version>`
-- that version is not newer than every other existing tag (`v1.2.0` exists, so the next tag is `v1.2.1`)
+- that version is not newer than every other existing tag (`v1.2.1` exists, so the next tag is `v1.2.2`)
 
 Bump every workspace package and Cargo.toml together:
 
 ```bash
-pnpm version:bump 1.2.1
-git commit -am "Release 1.2.1"
-git tag v1.2.1
-git push origin HEAD v1.2.1
+pnpm version:bump 1.2.2
+git commit -am "Release 1.2.2"
+git tag v1.2.2
+git push origin HEAD v1.2.2
 ```
 
 electron-builder reads `apps/desktop/package.json` and embeds that version in the installer names.
