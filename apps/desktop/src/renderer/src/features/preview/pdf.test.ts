@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pdfPageCount } from './pdf.js';
+import type { PromiseTryFn } from './pdfjs-polyfills.js';
 
 function minimalPdf(): Uint8Array {
   const objects = [
@@ -25,9 +26,7 @@ function minimalPdf(): Uint8Array {
 describe('pdfPageCount', () => {
   it('opens a one-page PDF without Uint8Array.toHex or Promise.try', async () => {
     const proto = Uint8Array.prototype as Uint8Array & { toHex?: () => string };
-    const promiseCtor = Promise as PromiseConstructor & {
-      try?: <T>(callbackFn: () => T) => Promise<Awaited<T>>;
-    };
+    const promiseCtor = Promise as unknown as { try?: PromiseTryFn };
     const originalHex = proto.toHex;
     const originalTry = promiseCtor.try;
     delete proto.toHex;

@@ -10,23 +10,24 @@ interface WeakMapUpsert<K extends object, V> {
   getOrInsertComputed?: (key: K, callbackfn: ComputeFn<K, V>) => V;
 }
 
-type PromiseTry = {
-  try?: <T>(callbackFn: (...args: never[]) => T, ...args: never[]) => Promise<Awaited<T>>;
-};
+export type PromiseTryFn = (
+  callbackFn: (...args: unknown[]) => unknown,
+  ...args: unknown[]
+) => Promise<unknown>;
 
-export function installPromiseTry(): void {
-  const ctor = Promise as PromiseConstructor & PromiseTry;
-  if (typeof ctor.try === 'function') {
-    return;
+export function installPromiseTry(): PromiseTryFn {
+  const ctor = Promise as unknown as { try?: PromiseTryFn };
+  if (typeof ctor.try !== 'function') {
+    ctor.try = (callbackFn, ...args) =>
+      new Promise((resolve) => {
+        resolve(callbackFn(...args));
+      });
   }
-  ctor.try = function promiseTry<T>(
-    callbackFn: (...args: never[]) => T,
-    ...args: never[]
-  ): Promise<Awaited<T>> {
-    return new Promise((resolve) => {
-      resolve(callbackFn(...args));
-    });
-  };
+  const installed = ctor.try;
+  if (installed === undefined) {
+    throw new Error('Promise.try was not installed');
+  }
+  return installed;
 }
 
 export function installMapGetOrInsertComputed(): void {

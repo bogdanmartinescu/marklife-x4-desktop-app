@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { installMapGetOrInsertComputed, installPromiseTry } from './pdfjs-polyfills.js';
+import {
+  installMapGetOrInsertComputed,
+  installPromiseTry,
+  type PromiseTryFn,
+} from './pdfjs-polyfills.js';
 
 describe('installMapGetOrInsertComputed', () => {
   it('computes a value once and returns the stored entry', () => {
@@ -38,15 +42,14 @@ describe('installMapGetOrInsertComputed', () => {
 
 describe('installPromiseTry', () => {
   it('turns a thrown callback into a rejected promise', async () => {
-    const ctor = Promise as PromiseConstructor & {
-      try?: <T>(callbackFn: () => T) => Promise<Awaited<T>>;
-    };
+    const ctor = Promise as unknown as { try?: PromiseTryFn };
     const original = ctor.try;
     delete ctor.try;
     try {
-      installPromiseTry();
+      const promiseTry = installPromiseTry();
+      expect(typeof promiseTry).toBe('function');
       await expect(
-        ctor.try?.(() => {
+        promiseTry(() => {
           throw new Error('pdf worker');
         }),
       ).rejects.toThrow('pdf worker');
