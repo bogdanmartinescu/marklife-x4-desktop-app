@@ -1,5 +1,6 @@
 appId: app.thermalbridge.desktop
 productName: ThermalBridge
+executableName: ThermalBridge
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 directories:
   output: release
@@ -27,6 +28,7 @@ win:
       to: printbridge/printbridge.exe
 linux:
   category: Utility
+  desktopName: ThermalBridge
   target:
     - AppImage
     - deb

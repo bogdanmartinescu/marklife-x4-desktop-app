@@ -3,7 +3,7 @@
 use std::ptr;
 
 use windows::core::{PCWSTR, PWSTR};
-use windows::Win32::Foundation::{BOOL, HANDLE};
+use windows::Win32::Foundation::HANDLE;
 use windows::Win32::Graphics::Printing::{
     ClosePrinter, EndDocPrinter, EndPagePrinter, EnumPrintersW, OpenPrinterW, StartDocPrinterW,
     StartPagePrinter, WritePrinter, DOC_INFO_1W, PRINTER_ENUM_CONNECTIONS, PRINTER_ENUM_LOCAL,
@@ -46,7 +46,7 @@ pub fn list_printers() -> Result<Vec<PrinterInfo>, BridgeError> {
     }
 
     let mut buffer = vec![0u8; needed as usize];
-    let ok = unsafe {
+    unsafe {
         EnumPrintersW(
             flags,
             PCWSTR::null(),
@@ -55,12 +55,9 @@ pub fn list_printers() -> Result<Vec<PrinterInfo>, BridgeError> {
             &mut needed,
             &mut returned,
         )
-    };
-    if !ok.as_bool() {
-        return Err(BridgeError::new(
-            "PRINTER_NOT_FOUND",
-            "EnumPrintersW failed",
-        ));
+        .map_err(|error| {
+            BridgeError::new("PRINTER_NOT_FOUND", format!("EnumPrintersW failed: {error}"))
+        })?;
     }
 
     let info_size = std::mem::size_of::<PRINTER_INFO_2W>();
@@ -109,13 +106,12 @@ pub fn send(config: &PrintConfig, bytes: &[u8]) -> Result<(), BridgeError> {
     let mut datatype = wide("RAW");
 
     let mut handle = HANDLE::default();
-    let opened = unsafe { OpenPrinterW(PCWSTR(name.as_mut_ptr()), &mut handle, None) };
-    if !opened.as_bool() {
-        return Err(BridgeError::new(
+    unsafe { OpenPrinterW(PCWSTR(name.as_mut_ptr()), &mut handle, None) }.map_err(|error| {
+        BridgeError::new(
             "PRINTER_NOT_FOUND",
-            format!("OpenPrinterW failed for {queue}"),
-        ));
-    }
+            format!("OpenPrinterW failed for {queue}: {error}"),
+        )
+    })?;
 
     let result = write_raw(handle, &mut doc_name, &mut datatype, bytes);
     unsafe {
@@ -145,7 +141,7 @@ fn write_raw(
     }
 
     let page_started = unsafe { StartPagePrinter(handle) };
-    if !BOOL(page_started).as_bool() && page_started == 0 {
+    if !page_started.as_bool() {
         unsafe {
             let _ = EndDocPrinter(handle);
         }
