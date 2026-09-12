@@ -104,7 +104,7 @@ mod tests {
     #[tokio::test]
     async fn version_method() {
         let result = dispatch("bridge.version", &json!({})).await.unwrap();
-        assert_eq!(result["version"], "0.1.0");
+        assert_eq!(result["version"], env!("CARGO_PKG_VERSION"));
         assert_eq!(result["platform"], std::env::consts::OS);
     }
 

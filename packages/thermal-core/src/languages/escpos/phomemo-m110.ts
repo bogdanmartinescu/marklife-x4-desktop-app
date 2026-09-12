@@ -143,7 +143,7 @@ export function placeOnPhomemoHead(options: {
 }): { data: Uint8Array; width: number; height: number } {
   let gray = options.gray;
   let width = Math.max(1, options.width);
-  let height = Math.max(1, options.height);
+  const height = Math.max(1, options.height);
   if (width > PHOMEMO_M110_WIDTH_PX) {
     const originX = Math.floor((width - PHOMEMO_M110_WIDTH_PX) / 2);
     const cropped = new Uint8Array(PHOMEMO_M110_WIDTH_PX * height).fill(255);

@@ -1,0 +1,128 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.2.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libcups2-dev \
+            libusb-1.0-0-dev \
+            pkg-config \
+            libdbus-1-dev \
+            libudev-dev
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm version:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:coverage
+
+      - name: cargo test
+        working-directory: native/printbridge
+        run: cargo test
+
+  release:
+    needs: test
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            builder: --mac
+            sidecar: printbridge
+          - os: macos-13
+            builder: --mac
+            sidecar: printbridge
+          - os: windows-latest
+            builder: --win
+            sidecar: printbridge.exe
+          - os: ubuntu-22.04
+            builder: --linux
+            sidecar: printbridge
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.2.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/printbridge
+
+      - name: Install native build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libcups2-dev \
+            libusb-1.0-0-dev \
+            pkg-config \
+            libdbus-1-dev \
+            libudev-dev \
+            fakeroot
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: Verify printbridge sidecar
+        shell: bash
+        run: test -f "native/printbridge/target/release/${{ matrix.sidecar }}"
+
+      - name: Package Electron app
+        working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: pnpm exec electron-builder ${{ matrix.builder }} --publish ${{ startsWith(github.ref, 'refs/tags/') && 'always' || 'never' }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: thermalbridge-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+            apps/desktop/release/*.blockmap
+            apps/desktop/release/latest*.yml
