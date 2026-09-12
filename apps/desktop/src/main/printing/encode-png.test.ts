@@ -18,4 +18,8 @@ describe('cupsMediaName', () => {
     expect(cupsMediaName(210, 297)).toBe('A4');
     expect(cupsMediaName(297, 210)).toBe('A4');
   });
+
+  it('falls back to rounded millimetres for a custom size', () => {
+    expect(cupsMediaName(100, 150)).toBe('100x150mm');
+  });
 });

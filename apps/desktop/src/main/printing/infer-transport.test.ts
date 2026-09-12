@@ -10,5 +10,11 @@ describe('inferTransport', () => {
     expect(inferTransport('bt-spp:/dev/cu.X4', undefined)).toBe('bluetooth-spp');
     expect(inferTransport('bt-ble:aa:bb', undefined)).toBe('bluetooth-ble');
     expect(inferTransport('usb:1234:5678:0', undefined)).toBe('usb');
+    expect(inferTransport('tcp:192.168.1.10:9100', undefined)).toBe('tcp');
+  });
+
+  it('falls back to the OS queue when the id has no transport prefix', () => {
+    const expected = process.platform === 'win32' ? 'windows-spooler' : 'cups';
+    expect(inferTransport('Canon_TS3300_series', undefined)).toBe(expected);
   });
 });

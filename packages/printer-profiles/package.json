@@ -1,6 +1,6 @@
 {
   "name": "@thermalbridge/printer-profiles",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "exports": {
     ".": {
@@ -11,12 +11,14 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.7",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   }

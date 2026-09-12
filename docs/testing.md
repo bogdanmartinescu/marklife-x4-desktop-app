@@ -1,5 +1,11 @@
 # Testing
 
+## CI
+
+Push and pull-request builds run `.github/workflows/test.yml` (`pnpm version:check`, lint, typecheck, `pnpm test:coverage`, `cargo test`). Version tags run the same gate in `.github/workflows/release.yml` before packaging.
+
+Coverage thresholds are 80% lines / functions / statements (70% branches) on `thermal-core`, `printer-profiles`, `shared`, and the desktop logic modules.
+
 ## Unit tests
 
 ```bash
