@@ -154,10 +154,12 @@ function usage() {
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const command = process.argv[2];
   if (command === 'check') {
-    const tags = (process.env.RELEASE_PREVIOUS_TAGS ?? '')
+    const fromEnv = (process.env.RELEASE_PREVIOUS_TAGS ?? '')
       .split(/\s+/)
       .map((tag) => tag.trim())
       .filter((tag) => tag.length > 0);
+    const tags =
+      process.env.RELEASE_PREVIOUS_TAGS !== undefined ? fromEnv : listVersionTags();
     const version = checkReleaseVersion(process.env, tags);
     process.stdout.write(`${version}\n`);
   } else if (command === 'bump') {

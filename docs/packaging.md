@@ -24,15 +24,15 @@ Every release must bump the version. `pnpm version:check` fails if:
 
 - workspace `package.json` versions and `native/printbridge/Cargo.toml` disagree
 - the git tag is not `v<package version>`
-- that version was already released (`v0.1.0` exists, so the next tag is `v0.2.0`)
+- that version was already released (`v1.2.0` exists, so the next tag is `v1.2.1`)
 
 Bump every workspace package and Cargo.toml together:
 
 ```bash
-pnpm version:bump 0.2.1
-git commit -am "Release 0.2.1"
-git tag v0.2.1
-git push origin HEAD v0.2.1
+pnpm version:bump 1.2.1
+git commit -am "Release 1.2.1"
+git tag v1.2.1
+git push origin HEAD v1.2.1
 ```
 
 electron-builder reads `apps/desktop/package.json` and embeds that version in the installer names.
