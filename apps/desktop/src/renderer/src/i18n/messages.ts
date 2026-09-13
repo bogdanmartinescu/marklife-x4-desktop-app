@@ -1,5 +1,4 @@
-export const LOCALES = ['en', 'ro'] as const;
-export type Locale = (typeof LOCALES)[number];
+export { LOCALES, type Locale } from '@thermalbridge/shared';
 
 export const messages = {
   en: {
@@ -11,6 +10,15 @@ export const messages = {
     navDiagnostics: 'Diagnostics',
     navHistory: 'History',
     navLibrary: 'Library',
+    navGroupWorkspace: 'Workspace',
+    navGroupContent: 'Content',
+    navGroupDevice: 'Device',
+    sidebarCollapse: 'Collapse sidebar',
+    sidebarExpand: 'Expand sidebar',
+    inspectorTab: 'Inspector',
+    printTab: 'Print',
+    inspectorEmpty: 'Select an item on the label to edit it.',
+    exportedDiagnostics: 'Diagnostics exported',
     language: 'Language',
     languageEn: 'English',
     languageRo: 'Romanian',
@@ -146,6 +154,9 @@ export const messages = {
     editorDuplicatePage: 'Duplicate page',
     editorDeletePage: 'Delete page',
     editorPageNumber: 'Page {n}',
+    sourcePreviewTitle: 'Source preview',
+    sourcePreviewPages: '{n} pages',
+    sourcePreviewPage: 'Page {n}',
     connectPrinter: 'Connect printer',
     connectPrinterHint:
       'Scan for advertised names (X4, M110, serial like Q002…, D210, P15, …), then bind USB, SPP, or BLE.',
@@ -354,6 +365,15 @@ export const messages = {
     navDiagnostics: 'Diagnostic',
     navHistory: 'Istoric',
     navLibrary: 'Bibliotecă',
+    navGroupWorkspace: 'Lucru',
+    navGroupContent: 'Conținut',
+    navGroupDevice: 'Dispozitiv',
+    sidebarCollapse: 'Restrânge bara',
+    sidebarExpand: 'Extinde bara',
+    inspectorTab: 'Inspector',
+    printTab: 'Printare',
+    inspectorEmpty: 'Selectează un element de pe etichetă ca să îl editezi.',
+    exportedDiagnostics: 'Diagnostice exportate',
     language: 'Limbă',
     languageEn: 'Engleză',
     languageRo: 'Română',
@@ -489,6 +509,9 @@ export const messages = {
     editorDuplicatePage: 'Duplică pagina',
     editorDeletePage: 'Șterge pagina',
     editorPageNumber: 'Pagina {n}',
+    sourcePreviewTitle: 'Previzualizare sursă',
+    sourcePreviewPages: '{n} pagini',
+    sourcePreviewPage: 'Pagina {n}',
     connectPrinter: 'Conectează imprimanta',
     connectPrinterHint:
       'Caută nume anunțate (X4, M110, serial tip Q002…, D210, P15, …), apoi asociază USB, SPP sau BLE.',

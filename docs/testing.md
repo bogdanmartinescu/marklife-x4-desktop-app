@@ -20,6 +20,10 @@ Byte-level coverage:
 - TsplJobBuilder golden job with a BITMAP payload
 - grayscale / threshold / Floyd–Steinberg
 - Marklife X4 `density.default === 14`
+- Menu registry completeness (every `MenuActionId` has EN/RO labels)
+- `registerAccelerator` never true for a modifier-free shortcut
+- `buildMenuTemplate` structure, radios, disabled states, macOS vs Windows
+- Command handler map covers every `MenuActionId`
 
 ## printbridge
 

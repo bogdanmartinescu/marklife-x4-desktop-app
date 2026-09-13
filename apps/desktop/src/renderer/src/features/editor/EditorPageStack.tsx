@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Copy, Plus, Trash2 } from 'lucide-react';
 import { LabelCanvas } from '@/features/editor/LabelCanvas.js';
 import type { LabelPage } from '@/features/editor/label-pages.js';
@@ -30,13 +31,22 @@ interface EditorPageStackProps {
 export function EditorPageStack(props: EditorPageStackProps) {
   const { t } = useI18n();
   const canDelete = props.pages.length > 1;
+  const selectedRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    selectedRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [props.selectedPageId]);
 
   return (
     <div className="flex flex-col items-center py-8">
       {props.pages.map((page, index) => {
         const selected = page.id === props.selectedPageId;
         return (
-          <div key={page.id} className="flex flex-col items-center">
+          <div
+            key={page.id}
+            ref={selected ? selectedRef : undefined}
+            className="flex flex-col items-center"
+          >
             <div className="group/page relative">
               <div className="mb-2 flex w-full items-center justify-between gap-2">
                 <p className="text-ui-xs font-medium text-ink-300">

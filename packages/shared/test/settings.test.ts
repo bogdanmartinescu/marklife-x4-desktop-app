@@ -11,6 +11,24 @@ describe('DEFAULT_APP_SETTINGS', () => {
       displayName: 'AWB 100 × 150 mm',
     });
     expect(parsed.locale).toBe('ro');
+    expect(parsed.sidebarCollapsed).toBe(false);
+  });
+
+  it('defaults sidebarCollapsed when the field is missing', () => {
+    expect(
+      AppSettingsSchema.parse({
+        schemaVersion: 1,
+        locale: 'ro',
+        bindings: [],
+        defaultLabelSize: DEFAULT_APP_SETTINGS.defaultLabelSize,
+        defaultMediaMode: 'gap',
+        defaultGapHeightMm: 2,
+        defaultGapOffsetMm: 0,
+        defaultCopies: 1,
+        defaultDither: 'threshold',
+        defaultThreshold: 128,
+      }).sidebarCollapsed,
+    ).toBe(false);
   });
 });
 

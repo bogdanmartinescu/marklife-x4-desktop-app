@@ -24,6 +24,8 @@ export const IpcChannel = {
   LIBRARY_TEMPLATES_SAVE: 'library:templates:save',
   LIBRARY_TEMPLATES_GET: 'library:templates:get',
   LIBRARY_TEMPLATES_REMOVE: 'library:templates:remove',
+  MENU_COMMAND: 'menu:command',
+  MENU_STATE: 'menu:state',
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];

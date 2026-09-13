@@ -1,35 +1,10 @@
 import { useEffect, useRef } from 'react';
+import type { MenuActionId } from '@thermalbridge/shared';
+import { editorShortcutAction, isTypingTarget } from './editor-shortcut-action.js';
 
 interface EditorShortcuts {
   enabled: boolean;
-  onAddText: () => void;
-  onAddQr: () => void;
-  onAddBarcode: () => void;
-  onAddRect: () => void;
-  onAddLine: () => void;
-  onAddCircle: () => void;
-  onAddArrow: () => void;
-  onAddIcon: () => void;
-  onAddImage: () => void;
-  onAddTable: () => void;
-  onAddField: () => void;
-  onDuplicate: () => void;
-  onDeleteSelected: () => void;
-  onToggleGrid: () => void;
-  onOpenPalette: () => void;
-  onEscape: () => void;
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-  return (
-    target.tagName === 'INPUT' ||
-    target.tagName === 'TEXTAREA' ||
-    target.tagName === 'SELECT' ||
-    target.isContentEditable
-  );
+  run: (id: MenuActionId) => void;
 }
 
 export function useEditorShortcuts(handlers: EditorShortcuts): void {
@@ -42,68 +17,17 @@ export function useEditorShortcuts(handlers: EditorShortcuts): void {
     }
     const onKeyDown = (event: KeyboardEvent): void => {
       const current = handlersRef.current;
-      if (event.key === 'Escape') {
-        current.onEscape();
+      if (event.key !== 'Escape' && isTypingTarget(event.target)) {
         return;
       }
-      if (isTypingTarget(event.target)) {
+      const action = editorShortcutAction(event);
+      if (action === null) {
         return;
       }
-      const cmd = event.metaKey || event.ctrlKey;
-      if (cmd && event.key.toLowerCase() === 'k') {
+      if (action !== 'edit.deselect') {
         event.preventDefault();
-        current.onOpenPalette();
-        return;
       }
-      if (cmd && event.key.toLowerCase() === 'd') {
-        event.preventDefault();
-        current.onDuplicate();
-        return;
-      }
-      if (event.key === 'Backspace' || event.key === 'Delete') {
-        current.onDeleteSelected();
-        return;
-      }
-      if (cmd) {
-        return;
-      }
-      switch (event.key.toLowerCase()) {
-        case 't':
-          current.onAddText();
-          return;
-        case 'q':
-          current.onAddQr();
-          return;
-        case 'b':
-          current.onAddBarcode();
-          return;
-        case 'r':
-          current.onAddRect();
-          return;
-        case 'l':
-          current.onAddLine();
-          return;
-        case 'o':
-          current.onAddCircle();
-          return;
-        case 'a':
-          current.onAddArrow();
-          return;
-        case 's':
-          current.onAddIcon();
-          return;
-        case 'i':
-          current.onAddImage();
-          return;
-        case 'e':
-          current.onAddTable();
-          return;
-        case 'f':
-          current.onAddField();
-          return;
-        case 'g':
-          current.onToggleGrid();
-      }
+      current.run(action);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);

@@ -10,7 +10,7 @@ import {
 } from '@thermalbridge/printer-profiles';
 import type { FitMode, Rotation } from '@thermalbridge/thermal-core';
 import type { PrinterInfo } from '@thermalbridge/shared';
-import { Bluetooth, RotateCcw, RotateCw, Sparkles, Undo2 } from 'lucide-react';
+import { RotateCcw, RotateCw, Sparkles, Undo2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
@@ -47,9 +47,7 @@ interface PrintPaneProps {
   busy: boolean;
   status: string;
   onChange: (patch: Partial<PrintDraft>) => void;
-  onPrint: () => void;
   onTest: () => void;
-  onConnectPrinter: () => void;
   className?: string;
   // Image section
   fitMode: FitMode;
@@ -125,19 +123,7 @@ export function PrintPane(props: PrintPaneProps) {
           <Field
             label={t('printer')}
             extra={
-              <div className="flex items-center gap-2">
-                {props.draft.printerId ? <ConnectionStatusBadge state={props.linkState} /> : null}
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="outline"
-                  className="border-white/5 bg-ink-750"
-                  onClick={props.onConnectPrinter}
-                >
-                  <Bluetooth />
-                  {t('connectPrinter')}
-                </Button>
-              </div>
+              props.draft.printerId ? <ConnectionStatusBadge state={props.linkState} /> : null
             }
           >
             <Select
@@ -519,19 +505,14 @@ export function PrintPane(props: PrintPaneProps) {
         ) : null}
       </div>
       <div className="mt-auto flex shrink-0 flex-col items-stretch gap-3 border-t border-white/5 px-4 pt-3">
-        <div className="flex gap-2">
-          <Button className="flex-1" disabled={printDisabled} onClick={props.onPrint}>
-            {props.busy ? t('printing') : t('print')}
-          </Button>
-          <Button
-            variant="outline"
-            className="border-white/5 bg-ink-750"
-            disabled={printDisabled}
-            onClick={props.onTest}
-          >
-            {t('testPage')}
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          className="border-white/5 bg-ink-750"
+          disabled={printDisabled}
+          onClick={props.onTest}
+        >
+          {t('testPage')}
+        </Button>
         {props.status ? <p className="mt-3 text-ui-xs text-ink-400">{props.status}</p> : null}
       </div>
     </div>

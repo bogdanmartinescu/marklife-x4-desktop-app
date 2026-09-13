@@ -1,6 +1,8 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'node:path';
+import { DEFAULT_MENU_STATE, IpcChannel, MenuCommandSchema } from '@thermalbridge/shared';
 import { registerIpc } from './ipc/index.js';
+import { applyApplicationMenu } from './menu/apply.js';
 import { createLogger } from './logger.js';
 import { shouldAllowRendererNavigation } from './navigation.js';
 import { ignoreClosedPipe, isClosedPipeError, writeLine } from './pipe-errors.js';
@@ -36,7 +38,7 @@ function createWindow(): BrowserWindow {
     title: 'ThermalBridge',
     show: false,
     backgroundColor: '#101216',
-    autoHideMenuBar: true,
+    autoHideMenuBar: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -96,6 +98,19 @@ app.whenReady().then(() => {
     library,
     logger,
     appVersion: app.getVersion(),
+  });
+
+  applyApplicationMenu({
+    state: {
+      ...DEFAULT_MENU_STATE,
+      locale: settings.get().locale,
+    },
+    isDev,
+    sendCommand: (command) => {
+      const parsed = MenuCommandSchema.parse(command);
+      const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      window?.webContents.send(IpcChannel.MENU_COMMAND, parsed);
+    },
   });
 
   createWindow();

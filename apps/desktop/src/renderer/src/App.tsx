@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import {
   MARKLIFE_X4,
@@ -19,38 +19,35 @@ import {
   isBelowPrintResolution,
   mmToDots,
   prepareInkjetRgba,
+  type Rotation,
 } from '@thermalbridge/thermal-core';
 import type {
   AppSettings,
   LabelTemplateMeta,
   MediaFileMeta,
+  MenuFitMode,
   PrinterBinding,
   PrinterInfo,
   PrintHistoryMeta,
   PrintRequest,
+  Screen,
 } from '@thermalbridge/shared';
 import { isMediaMimeType, ThermalBridgeError } from '@thermalbridge/shared';
-import {
-  Activity,
-  History,
-  Images,
-  Languages,
-  Printer,
-  Settings2,
-  SlidersHorizontal,
-} from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button.js';
-import { Input } from '@/components/ui/input.js';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu.js';
 import { Toaster } from '@/components/ui/sonner.js';
 import { TooltipProvider } from '@/components/ui/tooltip.js';
+import {
+  createCommandHandlers,
+  type AppCommandActions,
+  type PreviewCommandsHandle,
+} from '@/features/commands/command-handlers.js';
+import { buildMenuState } from '@/features/commands/menu-state.js';
+import { ModalProvider, useModalState } from '@/features/commands/modal-context.js';
+import { useCommands } from '@/features/commands/use-commands.js';
+import { useMenuSync } from '@/features/commands/use-menu-sync.js';
+import { AppSidebar } from '@/features/layout/AppSidebar.js';
+import { WorkspaceRightPane } from '@/features/layout/WorkspaceRightPane.js';
+import { SaveTemplateDialog } from '@/features/library/SaveTemplateDialog.js';
 import { CalibrationPane } from '@/features/calibration/CalibrationPane.js';
 import { HistoryPane } from '@/features/library/HistoryPane.js';
 import { LibraryPane } from '@/features/library/LibraryPane.js';
@@ -145,7 +142,7 @@ import {
 import { I18nProvider, useI18n } from '@/i18n/I18nProvider.js';
 import type { Locale } from '@/i18n/messages.js';
 import { applySettingsToDraft } from '@/state/hydrate-draft.js';
-import type { PrintDraft, Screen, SourceDocument } from '@/state/types.js';
+import type { PrintDraft, SourceDocument } from '@/state/types.js';
 import { cn } from '@/lib/utils.js';
 
 const INITIAL_DRAFT: PrintDraft = {
@@ -193,10 +190,12 @@ export function App() {
 
   return (
     <TooltipProvider>
-      <I18nProvider locale={locale} setLocale={setLocale}>
-        <AppShell settings={settings} setSettings={setSettings} onSettingsLocale={setLocaleState} />
-        <Toaster />
-      </I18nProvider>
+      <ModalProvider>
+        <I18nProvider locale={locale} setLocale={setLocale}>
+          <AppShell settings={settings} setSettings={setSettings} onSettingsLocale={setLocaleState} />
+          <Toaster />
+        </I18nProvider>
+      </ModalProvider>
     </TooltipProvider>
   );
 }
@@ -207,7 +206,10 @@ function AppShell(props: {
   onSettingsLocale: (locale: Locale) => void;
 }) {
   const { t, locale, setLocale } = useI18n();
+  const { modalOpen } = useModalState();
+  const previewRef = useRef<PreviewCommandsHandle>(null);
   const [screen, setScreen] = useState<Screen>('print');
+  const [showGrid, setShowGrid] = useState(false);
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [usbDevices, setUsbDevices] = useState<PrinterInfo[]>([]);
   const [sppPorts, setSppPorts] = useState<PrinterInfo[]>([]);
@@ -1176,67 +1178,215 @@ function AppShell(props: {
       });
   };
 
-  const nav: Array<{ id: Screen; label: string; icon: ReactNode }> = [
-    { id: 'print', label: t('navPrint'), icon: <Printer /> },
-    { id: 'history', label: t('navHistory'), icon: <History /> },
-    { id: 'library', label: t('navLibrary'), icon: <Images /> },
-    { id: 'setup', label: t('navPrinters'), icon: <Settings2 /> },
-    { id: 'calibration', label: t('navCalibration'), icon: <SlidersHorizontal /> },
-    { id: 'diagnostics', label: t('navDiagnostics'), icon: <Activity /> },
-  ];
+  const applyTemplateById = (id: string): void => {
+    void window.thermalBridge.library
+      .getTemplate(id)
+      .then((template) => {
+        const nextPages = pagesFromTemplate(template.pages);
+        const first = nextPages[0];
+        updateDraft({ widthMm: template.widthMm, heightMm: template.heightMm });
+        setPageSources((current) => {
+          releaseAllPageSources(current, (url) => URL.revokeObjectURL(url));
+          return {};
+        });
+        setPages(nextPages);
+        setSelectedPageId(first?.id ?? '');
+        setSelectedId(null);
+        setScreen('print');
+      })
+      .catch((error: unknown) => {
+        const message = formatError(error);
+        setStatus(message);
+        toast.error(message);
+      });
+  };
+
+  const commandActions: AppCommandActions = {
+    openFile: onOpenDialog,
+    saveTemplate: () => {
+      setTemplateName(`${Math.round(draft.widthMm)}×${Math.round(draft.heightMm)}`);
+      setSaveTemplateOpen(true);
+    },
+    applyTemplate: applyTemplateById,
+    exportDiagnostics: () => {
+      if (!window.thermalBridge) {
+        return;
+      }
+      void window.thermalBridge.diagnostics
+        .exportBundle()
+        .then((path) => {
+          setStatus(path);
+          toast.success(t('exportedDiagnostics'));
+        })
+        .catch((error: unknown) => {
+          const message = formatError(error);
+          setStatus(message);
+          toast.error(message);
+        });
+    },
+    duplicate: () => {
+      if (!selectedId || selectedId === AWB_IMAGE_ID) {
+        return;
+      }
+      const current = overlays.find((item) => item.id === selectedId);
+      if (!current) {
+        return;
+      }
+      addOverlay(duplicateOverlay(current));
+    },
+    deleteSelected: () => {
+      if (!selectedId || !selectedPage) {
+        return;
+      }
+      const nextPage = deleteSelectedFromPage(selectedPage, selectedId, AWB_IMAGE_ID);
+      if (!nextPage) {
+        return;
+      }
+      const nextPages = updateLabelPage(pages, selectedPage.id, {
+        overlays: nextPage.overlays,
+        contentBox: nextPage.contentBox,
+        hasSource: nextPage.hasSource,
+      });
+      setPages(nextPages);
+      if (selectedId === AWB_IMAGE_ID) {
+        setPageSources((current) =>
+          releasePageSource(current, selectedPage.id, (url) => URL.revokeObjectURL(url)),
+        );
+      }
+      setSelectedId(null);
+    },
+    deselect: () => setSelectedId(null),
+    addText: () => addOverlay(createTextOverlay(draft.widthMm, draft.heightMm)),
+    addQr: () => addOverlay(createQrOverlay(draft.widthMm, draft.heightMm)),
+    addBarcode: () => addOverlay(createBarcodeOverlay(draft.widthMm, draft.heightMm)),
+    addRect: () => addOverlay(createRectOverlay(draft.widthMm, draft.heightMm)),
+    addLine: () => addOverlay(createLineOverlay(draft.widthMm, draft.heightMm)),
+    addCircle: () => addOverlay(createCircleOverlay(draft.widthMm, draft.heightMm)),
+    addArrow: () => addOverlay(createArrowOverlay(draft.widthMm, draft.heightMm)),
+    addTable: () => addOverlay(createTableOverlay(draft.widthMm, draft.heightMm)),
+    addField: () => addOverlay(createFieldOverlay(draft.widthMm, draft.heightMm)),
+    setLabelSize: (size) => updateDraft(size),
+    addPage: () => {
+      if (!selectedPage) {
+        return;
+      }
+      const result = insertLabelPageAfter(pages, selectedPage.id);
+      setPages(result.pages);
+      setSelectedPageId(result.inserted.id);
+      setSelectedId(null);
+    },
+    duplicatePage: () => {
+      if (!selectedPage) {
+        return;
+      }
+      const result = duplicateLabelPage(pages, selectedPage.id);
+      setPages(result.pages);
+      setSelectedPageId(result.inserted.id);
+      const assets = pageSources[selectedPage.id];
+      if (assets) {
+        setPageSources((current) => ({ ...current, [result.inserted.id]: assets }));
+      }
+      setSelectedId(null);
+    },
+    deletePage: () => {
+      if (!selectedPage) {
+        return;
+      }
+      const next = removeLabelPage(pages, selectedPage.id);
+      setPages(next);
+      setPageSources((current) =>
+        releasePageSource(current, selectedPage.id, (url) => URL.revokeObjectURL(url)),
+      );
+      if (selectedPageId === selectedPage.id) {
+        const keep = next[0];
+        if (keep) {
+          setSelectedPageId(keep.id);
+        }
+      }
+      setSelectedId(null);
+    },
+    setFitMode: (mode: MenuFitMode) => updateDraft({ fitMode: mode }),
+    rotateLeft: () =>
+      updateDraft({ rotation: ((draft.rotation + 270) % 360) as Rotation }),
+    rotateRight: () =>
+      updateDraft({ rotation: ((draft.rotation + 90) % 360) as Rotation }),
+    enhance: onEnhance,
+    revertEnhance: onRevertCleanup,
+    print: onPrint,
+    testPage: onTest,
+    connectPrinter: openConnectPrinter,
+    selectPrinter: (id) => {
+      const printer = catalog.find((item) => item.id === id);
+      if (printer) {
+        void bindPrinter(printer);
+      }
+    },
+    selectProfile: (id) => updateDraft({ profileId: id }),
+    setScreen,
+    toggleGrid: () => setShowGrid((current) => !current),
+    setLocale,
+  };
+  const actionsRef = useRef(commandActions);
+  actionsRef.current = commandActions;
+  const commandHandlers = useMemo(
+    () =>
+      createCommandHandlers({
+        actions: () => actionsRef.current,
+        preview: () => previewRef.current,
+      }),
+    [],
+  );
+  const { run } = useCommands(commandHandlers);
+  const menuState = useMemo(
+    () =>
+      buildMenuState({
+        screen,
+        locale,
+        hasSelection: Boolean(selectedId),
+        hasSource: selectedPage?.hasSource === true,
+        canPrint: !printDisabled,
+        isEnhanced: selectedSource?.enhanced === true,
+        showGrid,
+        fitMode: draft.fitMode,
+        pageCount: pages.length,
+        modalOpen,
+        labelSizes: labelSizesForProfile(profile).map((size) => ({
+          widthMm: size.widthMm,
+          heightMm: size.heightMm,
+          displayName: size.displayName,
+        })),
+        activeLabelSize: { widthMm: draft.widthMm, heightMm: draft.heightMm },
+        printers: catalog.map((printer) => ({ id: printer.id, name: printer.name })),
+        activePrinterId: draft.printerId,
+        profiles: PROFILES.map((item) => ({ id: item.id, displayName: item.displayName })),
+        activeProfileId: draft.profileId,
+        templates: templateItems.map((item) => ({ id: item.id, name: item.name })),
+      }),
+    [
+      catalog,
+      draft.fitMode,
+      draft.heightMm,
+      draft.printerId,
+      draft.profileId,
+      draft.widthMm,
+      locale,
+      modalOpen,
+      pages.length,
+      printDisabled,
+      profile,
+      selectedId,
+      selectedPage?.hasSource,
+      selectedSource?.enhanced,
+      screen,
+      showGrid,
+      templateItems,
+    ],
+  );
+  useMenuSync(menuState);
 
   return (
     <div className="flex h-full bg-ink-900">
-      <aside className="flex w-48 shrink-0 flex-col overflow-hidden border-r border-white/5 bg-ink-950 px-2 py-3 text-ink-300">
-        <div className="mb-4 flex items-center gap-2.5 px-2">
-          <p className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-[10px] font-bold tracking-tight text-primary">
-            TB
-          </p>
-          <p className="min-w-0 truncate text-ui-sm font-semibold tracking-tight text-ink-50">
-            {t('appName')}
-          </p>
-        </div>
-        <nav className="flex min-h-0 flex-1 flex-col gap-0.5">
-          {nav.map((item) => (
-            <Button
-              key={item.id}
-              type="button"
-              variant="ghost"
-              className={cn(
-                'h-9 w-full justify-start px-2.5 text-ink-300 hover:bg-ink-800 hover:text-ink-50',
-                screen === item.id && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
-              )}
-              aria-current={screen === item.id ? 'page' : false}
-              onClick={() => setScreen(item.id)}
-            >
-              {item.icon}
-              <span className="truncate">{item.label}</span>
-            </Button>
-          ))}
-        </nav>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              className="mt-1 h-9 w-full justify-start px-2.5 text-ink-300 hover:bg-ink-800 hover:text-ink-50"
-              aria-label={t('language')}
-            >
-              <Languages />
-              <span className="truncate">{locale === 'ro' ? t('languageRo') : t('languageEn')}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="right" className="w-48">
-            <DropdownMenuRadioGroup
-              value={locale}
-              onValueChange={(value) => setLocale(value as Locale)}
-            >
-              <DropdownMenuRadioItem value="ro">{t('languageRo')}</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="en">{t('languageEn')}</DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </aside>
+      <AppSidebar screen={screen} onScreen={setScreen} />
 
       <main
         className={cn(
@@ -1248,6 +1398,7 @@ function AppShell(props: {
           <div className="flex h-full min-h-0">
             <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
               <PreviewPane
+              ref={previewRef}
               source={source}
               sourceUrl={sourcePreview?.url ?? null}
               sourceUrls={sourceUrlsFromMap(pageSources)}
@@ -1300,52 +1451,30 @@ function AppShell(props: {
                   current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
                 )
               }
-              onAddText={() => addOverlay(createTextOverlay(draft.widthMm, draft.heightMm))}
-              onAddQr={() => addOverlay(createQrOverlay(draft.widthMm, draft.heightMm))}
-              onAddBarcode={() => addOverlay(createBarcodeOverlay(draft.widthMm, draft.heightMm))}
-              onAddRect={() => addOverlay(createRectOverlay(draft.widthMm, draft.heightMm))}
-              onAddLine={() => addOverlay(createLineOverlay(draft.widthMm, draft.heightMm))}
-              onAddCircle={() => addOverlay(createCircleOverlay(draft.widthMm, draft.heightMm))}
-              onAddArrow={() => addOverlay(createArrowOverlay(draft.widthMm, draft.heightMm))}
               onAddIcon={(iconId) => addOverlay(createIconOverlay(draft.widthMm, draft.heightMm, iconId))}
               onAddImage={(src, naturalWidth, naturalHeight) =>
                 addOverlay(
                   createImageOverlay(draft.widthMm, draft.heightMm, src, naturalWidth, naturalHeight),
                 )
               }
-              onAddTable={() => addOverlay(createTableOverlay(draft.widthMm, draft.heightMm))}
-              onAddField={() => addOverlay(createFieldOverlay(draft.widthMm, draft.heightMm))}
-              onDuplicate={() => {
-                if (!selectedId || selectedId === AWB_IMAGE_ID) {
-                  return;
+              run={run}
+              showGrid={showGrid}
+              sourcePages={pages.flatMap((page) => {
+                const assets = pageSources[page.id];
+                if (!assets) {
+                  return [];
                 }
-                const current = overlays.find((item) => item.id === selectedId);
-                if (!current) {
-                  return;
-                }
-                addOverlay(duplicateOverlay(current));
-              }}
-              onDeleteSelected={() => {
-                if (!selectedId || !selectedPage) {
-                  return;
-                }
-                const nextPage = deleteSelectedFromPage(selectedPage, selectedId, AWB_IMAGE_ID);
-                if (!nextPage) {
-                  return;
-                }
-                const nextPages = updateLabelPage(pages, selectedPage.id, {
-                  overlays: nextPage.overlays,
-                  contentBox: nextPage.contentBox,
-                  hasSource: nextPage.hasSource,
-                });
-                setPages(nextPages);
-                if (selectedId === AWB_IMAGE_ID) {
-                  setPageSources((current) =>
-                    releasePageSource(current, selectedPage.id, (url) => URL.revokeObjectURL(url)),
-                  );
-                }
-                setSelectedId(null);
-              }}
+                return [
+                  {
+                    pageId: page.id,
+                    mimeType: assets.document.mimeType,
+                    pageNumber: assets.document.pageNumber,
+                    pageCount: assets.document.pageCount,
+                    previewUrl: assets.previewUrl,
+                    name: assets.document.name,
+                  },
+                ];
+              })}
               onConnectPrinter={openConnectPrinter}
               onLabelSize={(size) => updateDraft(size)}
               onFile={onFile}
@@ -1385,13 +1514,14 @@ function AppShell(props: {
               linkState={linkState}
               printDisabled={printDisabled}
               busy={busy}
-              shortcutsEnabled={!connectOpen}
+              shortcutsEnabled={!modalOpen}
               labelSizes={labelSizesForProfile(profile)}
               />
             </div>
-            <aside className="flex w-[18rem] shrink-0 flex-col border-l border-white/5 bg-ink-950/40">
-              {selectedOverlay && selectedId !== AWB_IMAGE_ID ? (
-                <div className="min-h-0 max-h-[min(22rem,45%)] overflow-auto border-b border-white/5 p-3">
+            <WorkspaceRightPane
+              hasInspector={selectedOverlay !== undefined && selectedId !== AWB_IMAGE_ID}
+              inspector={
+                selectedOverlay && selectedId !== AWB_IMAGE_ID ? (
                   <EditorInspector
                     overlay={selectedOverlay}
                     selectedId={selectedId}
@@ -1435,9 +1565,9 @@ function AppShell(props: {
                       );
                     }}
                   />
-                </div>
-              ) : null}
-              <div className="min-h-0 flex-1">
+                ) : null
+              }
+              print={
                 <PrintPane
                   draft={draft}
                   printers={catalog}
@@ -1445,9 +1575,7 @@ function AppShell(props: {
                   busy={busy}
                   status={status}
                   onChange={updateDraft}
-                  onPrint={onPrint}
                   onTest={onTest}
-                  onConnectPrinter={openConnectPrinter}
                   fitMode={draft.fitMode}
                   rotation={draft.rotation}
                   hasSource={selectedPage?.hasSource === true}
@@ -1462,8 +1590,8 @@ function AppShell(props: {
                   onEnhance={onEnhance}
                   onRevertEnhance={onRevertCleanup}
                 />
-              </div>
-            </aside>
+              }
+            />
           </div>
         ) : null}
 
@@ -1561,28 +1689,7 @@ function AppShell(props: {
                 setMediaItems((current) => current.filter((item) => item.id !== id));
               });
             }}
-            onApplyTemplate={(id) => {
-              void window.thermalBridge.library
-                .getTemplate(id)
-                .then((template) => {
-                  const nextPages = pagesFromTemplate(template.pages);
-                  const first = nextPages[0];
-                  updateDraft({ widthMm: template.widthMm, heightMm: template.heightMm });
-                  setPageSources((current) => {
-                    releaseAllPageSources(current, (url) => URL.revokeObjectURL(url));
-                    return {};
-                  });
-                  setPages(nextPages);
-                  setSelectedPageId(first?.id ?? '');
-                  setSelectedId(null);
-                  setScreen('print');
-                })
-                .catch((error: unknown) => {
-                  const message = formatError(error);
-                  setStatus(message);
-                  toast.error(message);
-                });
-            }}
+            onApplyTemplate={applyTemplateById}
             onDeleteTemplate={(id) => {
               void window.thermalBridge.library.removeTemplate(id).then(() => {
                 setTemplateItems((current) => current.filter((item) => item.id !== id));
@@ -1591,78 +1698,50 @@ function AppShell(props: {
           />
         ) : null}
       </main>
-      {saveTemplateOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[18vh]"
-          onClick={() => setSaveTemplateOpen(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl border border-white/5 bg-ink-800 p-4 shadow-panel"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <p className="mb-3 text-sm font-medium">{t('templatesSaveTitle')}</p>
-            <label className="mb-3 block space-y-1.5">
-              <span className="text-ui-2xs text-ink-400">{t('templatesName')}</span>
-              <Input
-                value={templateName}
-                placeholder={t('templatesNamePlaceholder')}
-                onChange={(event) => setTemplateName(event.target.value)}
-                autoFocus
-              />
-            </label>
-            <div className="flex justify-end gap-2">
-              <Button type="button" size="sm" variant="ghost" onClick={() => setSaveTemplateOpen(false)}>
-                {t('templatesCancel')}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                disabled={templateName.trim().length === 0}
-                onClick={() => {
-                  const name = templateName.trim();
-                  if (name.length === 0) {
-                    return;
-                  }
-                  void window.thermalBridge.library
-                    .saveTemplate({
-                      name,
-                      widthMm: draft.widthMm,
-                      heightMm: draft.heightMm,
-                      pages: templatePagesFromLabel(pages),
-                    })
-                    .then((saved) => {
-                      setTemplateItems((current) => {
-                        const without = current.filter((item) => item.id !== saved.id);
-                        return [
-                          {
-                            id: saved.id,
-                            name: saved.name,
-                            createdAt: saved.createdAt,
-                            updatedAt: saved.updatedAt,
-                            widthMm: saved.widthMm,
-                            heightMm: saved.heightMm,
-                            pageCount: saved.pages.length,
-                          },
-                          ...without,
-                        ];
-                      });
-                      setSaveTemplateOpen(false);
-                      setStatus(t('templatesSaved'));
-                      toast.success(t('templatesSaved'));
-                    })
-                    .catch((error: unknown) => {
-                      const message = formatError(error);
-                      setStatus(message);
-                      toast.error(message);
-                    });
-                }}
-              >
-                {t('templatesSave')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <SaveTemplateDialog
+        open={saveTemplateOpen}
+        name={templateName}
+        onNameChange={setTemplateName}
+        onClose={() => setSaveTemplateOpen(false)}
+        onSave={() => {
+          const name = templateName.trim();
+          if (name.length === 0) {
+            return;
+          }
+          void window.thermalBridge.library
+            .saveTemplate({
+              name,
+              widthMm: draft.widthMm,
+              heightMm: draft.heightMm,
+              pages: templatePagesFromLabel(pages),
+            })
+            .then((saved) => {
+              setTemplateItems((current) => {
+                const without = current.filter((item) => item.id !== saved.id);
+                return [
+                  {
+                    id: saved.id,
+                    name: saved.name,
+                    createdAt: saved.createdAt,
+                    updatedAt: saved.updatedAt,
+                    widthMm: saved.widthMm,
+                    heightMm: saved.heightMm,
+                    pageCount: saved.pages.length,
+                  },
+                  ...without,
+                ];
+              });
+              setSaveTemplateOpen(false);
+              setStatus(t('templatesSaved'));
+              toast.success(t('templatesSaved'));
+            })
+            .catch((error: unknown) => {
+              const message = formatError(error);
+              setStatus(message);
+              toast.error(message);
+            });
+        }}
+      />
       <ConnectPrinterDialog
         open={connectOpen}
         printers={printers}

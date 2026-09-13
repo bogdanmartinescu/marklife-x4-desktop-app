@@ -15,82 +15,55 @@ import {
   TriangleAlert,
   Type,
 } from 'lucide-react';
+import { commandSpec, menuLabel, type MenuActionId } from '@thermalbridge/shared';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog.js';
 import { Input } from '@/components/ui/input.js';
+import { displayAccelerator } from '@/features/commands/accelerator-display.js';
 import { useI18n } from '@/i18n/I18nProvider.js';
-import type { MessageKey } from '@/i18n/messages.js';
 
 interface EditorPaletteProps {
   open: boolean;
   onClose: () => void;
-  onAddText: () => void;
-  onAddQr: () => void;
-  onAddBarcode: () => void;
-  onAddRect: () => void;
-  onAddLine: () => void;
-  onAddCircle: () => void;
-  onAddArrow: () => void;
-  onAddIcon: () => void;
-  onAddImage: () => void;
-  onAddTable: () => void;
-  onAddField: () => void;
-  onDuplicate: () => void;
-  onDeleteSelected: () => void;
-  onToggleGrid: () => void;
+  run: (id: MenuActionId) => void;
 }
 
-interface PaletteCommand {
-  id: string;
-  labelKey: MessageKey;
-  shortcut: string;
-  icon: typeof Type;
-  run: () => void;
-}
+const PALETTE_ACTIONS: Array<{ id: MenuActionId; icon: typeof Type }> = [
+  { id: 'insert.text', icon: Type },
+  { id: 'insert.qr', icon: QrCode },
+  { id: 'insert.barcode', icon: Barcode },
+  { id: 'insert.box', icon: Square },
+  { id: 'insert.line', icon: Minus },
+  { id: 'insert.circle', icon: Circle },
+  { id: 'insert.arrow', icon: ArrowRight },
+  { id: 'insert.icon', icon: TriangleAlert },
+  { id: 'insert.image', icon: ImageIcon },
+  { id: 'insert.table', icon: Table },
+  { id: 'insert.field', icon: CalendarClock },
+  { id: 'edit.duplicate', icon: Copy },
+  { id: 'edit.delete', icon: Trash2 },
+  { id: 'view.toggleGrid', icon: Grid3x3 },
+];
 
 export function EditorPalette(props: EditorPaletteProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [query, setQuery] = useState('');
-  const commands: PaletteCommand[] = useMemo(
-    () => [
-      { id: 'text', labelKey: 'editorAddText', shortcut: 'T', icon: Type, run: props.onAddText },
-      { id: 'qr', labelKey: 'editorAddQr', shortcut: 'Q', icon: QrCode, run: props.onAddQr },
-      {
-        id: 'barcode',
-        labelKey: 'editorAddBarcode',
-        shortcut: 'B',
-        icon: Barcode,
-        run: props.onAddBarcode,
-      },
-      { id: 'rect', labelKey: 'editorAddBox', shortcut: 'R', icon: Square, run: props.onAddRect },
-      { id: 'line', labelKey: 'editorAddLine', shortcut: 'L', icon: Minus, run: props.onAddLine },
-      { id: 'circle', labelKey: 'editorAddCircle', shortcut: 'O', icon: Circle, run: props.onAddCircle },
-      { id: 'arrow', labelKey: 'editorAddArrow', shortcut: 'A', icon: ArrowRight, run: props.onAddArrow },
-      { id: 'icon', labelKey: 'editorAddIcon', shortcut: 'S', icon: TriangleAlert, run: props.onAddIcon },
-      { id: 'image', labelKey: 'editorAddImage', shortcut: 'I', icon: ImageIcon, run: props.onAddImage },
-      { id: 'table', labelKey: 'editorAddTable', shortcut: 'E', icon: Table, run: props.onAddTable },
-      { id: 'field', labelKey: 'editorAddField', shortcut: 'F', icon: CalendarClock, run: props.onAddField },
-      { id: 'dup', labelKey: 'editorDuplicate', shortcut: '⌘D', icon: Copy, run: props.onDuplicate },
-      { id: 'del', labelKey: 'editorDelete', shortcut: '⌫', icon: Trash2, run: props.onDeleteSelected },
-      { id: 'grid', labelKey: 'editorGrid', shortcut: 'G', icon: Grid3x3, run: props.onToggleGrid },
-    ],
-    [
-      props.onAddArrow,
-      props.onAddBarcode,
-      props.onAddCircle,
-      props.onAddField,
-      props.onAddIcon,
-      props.onAddImage,
-      props.onAddLine,
-      props.onAddQr,
-      props.onAddRect,
-      props.onAddTable,
-      props.onAddText,
-      props.onDeleteSelected,
-      props.onDuplicate,
-      props.onToggleGrid,
-    ],
+  const commands = useMemo(
+    () =>
+      PALETTE_ACTIONS.map((item) => ({
+        ...item,
+        label: menuLabel(item.id, locale),
+        shortcut: displayAccelerator(commandSpec(item.id).accelerator),
+      })),
+    [locale],
   );
   const filtered = commands.filter((item) => {
-    const haystack = `${t(item.labelKey)} ${item.shortcut}`.toLowerCase();
+    const haystack = `${item.label} ${item.shortcut}`.toLowerCase();
     return haystack.includes(query.trim().toLowerCase());
   });
 
@@ -100,19 +73,16 @@ export function EditorPalette(props: EditorPaletteProps) {
     }
   }, [props.open]);
 
-  if (!props.open) {
-    return null;
-  }
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[15vh]"
-      onClick={props.onClose}
-    >
-      <div
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-white/5 bg-ink-800 shadow-panel"
-        onClick={(event) => event.stopPropagation()}
+    <Dialog open={props.open} onOpenChange={(open) => !open && props.onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="top-[15vh] w-full max-w-md translate-y-0 gap-0 overflow-hidden p-0"
       >
+        <DialogHeader className="sr-only">
+          <DialogTitle>{t('editorSearchCommands')}</DialogTitle>
+          <DialogDescription>{t('editorPalettePlaceholder')}</DialogDescription>
+        </DialogHeader>
         <div className="border-b p-2">
           <Input
             autoFocus
@@ -120,13 +90,10 @@ export function EditorPalette(props: EditorPaletteProps) {
             placeholder={t('editorPalettePlaceholder')}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                props.onClose();
-              }
               if (event.key === 'Enter') {
                 const first = filtered[0];
                 if (first) {
-                  first.run();
+                  props.run(first.id);
                   props.onClose();
                 }
               }
@@ -142,19 +109,19 @@ export function EditorPalette(props: EditorPaletteProps) {
                   type="button"
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-ui-sm hover:bg-ink-750"
                   onClick={() => {
-                    item.run();
+                    props.run(item.id);
                     props.onClose();
                   }}
                 >
                   <Icon className="size-4 text-muted-foreground" />
-                  <span className="flex-1">{t(item.labelKey)}</span>
+                  <span className="flex-1">{item.label}</span>
                   <kbd className="text-[10px] text-muted-foreground">{item.shortcut}</kbd>
                 </button>
               </li>
             );
           })}
         </ul>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

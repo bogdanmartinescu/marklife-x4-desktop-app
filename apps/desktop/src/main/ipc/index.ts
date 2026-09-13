@@ -1,4 +1,4 @@
-import { dialog, ipcMain, BrowserWindow } from 'electron';
+import { app, dialog, ipcMain, BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { unlinkSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -7,6 +7,8 @@ import type { z } from 'zod';
 import {
   AppSettingsPatchSchema,
   IpcChannel,
+  MenuCommandSchema,
+  MenuStateSchema,
   ThermalBridgeError,
   type AppSettings,
   type LabelTemplate,
@@ -40,6 +42,7 @@ import type { BridgeManager } from '../printing/bridge-manager.js';
 import type { SettingsStore } from '../settings/store.js';
 import { AddHistorySchema, AddMediaSchema, BleScanSchema, LibraryIdSchema, PrintRequestSchema, SaveTemplateSchema, TestPrintRequestSchema } from './schemas.js';
 import { openBluetoothSettings } from '../bluetooth/open-settings.js';
+import { applyApplicationMenu } from '../menu/apply.js';
 
 const lastPrint: { current: PrintResult | null } = { current: null };
 
@@ -51,6 +54,18 @@ export function registerIpc(options: {
   appVersion: string;
 }): void {
   const { bridge, settings, library, logger, appVersion } = options;
+
+  ipcMain.handle(IpcChannel.MENU_STATE, (_event, raw: unknown): void => {
+    const state = MenuStateSchema.parse(raw);
+    applyApplicationMenu({
+      state,
+      isDev: !app.isPackaged,
+      sendCommand: (command) => {
+        const parsed = MenuCommandSchema.parse(command);
+        _event.sender.send(IpcChannel.MENU_COMMAND, parsed);
+      },
+    });
+  });
 
   ipcMain.handle(IpcChannel.PRINTERS_LIST, async (): Promise<PrinterInfo[]> => {
     return await listPrinters(bridge, settings);

@@ -1,13 +1,25 @@
-import { useEffect, useRef, useState, type DragEvent, type ReactElement } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type DragEvent,
+  type ReactElement,
+} from 'react';
 import type { LabelSize } from '@thermalbridge/printer-profiles';
+import type { MenuActionId } from '@thermalbridge/shared';
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button.js';
+import type { PreviewCommandsHandle } from '@/features/commands/command-handlers.js';
 import { EditorDock } from '@/features/editor/EditorDock.js';
 import { EditorIconPicker } from '@/features/editor/EditorIconPicker.js';
 import { EditorPageStack } from '@/features/editor/EditorPageStack.js';
 import { EditorPalette } from '@/features/editor/EditorPalette.js';
 import { EditorTopChrome } from '@/features/editor/EditorTopChrome.js';
 import { PhotoCleanupBanner } from '@/features/preview/PhotoCleanupBanner.js';
+import { SourceFilmstrip } from '@/features/preview/SourceFilmstrip.js';
+import { sourceFilmstripItems, type SourceFilmstripInput } from '@/features/preview/source-filmstrip.js';
 import type { LabelPage } from '@/features/editor/label-pages.js';
 import type { OverlayElement } from '@/features/editor/overlay.js';
 import { normalizeImportedImage } from '@/features/editor/svg-source.js';
@@ -45,19 +57,10 @@ interface PreviewPaneProps {
   onContentBox: (box: ContentBox) => void;
   onSelect: (id: string | null) => void;
   onOverlayChange: (id: string, patch: Partial<OverlayElement>) => void;
-  onAddText: () => void;
-  onAddQr: () => void;
-  onAddBarcode: () => void;
-  onAddRect: () => void;
-  onAddLine: () => void;
-  onAddCircle: () => void;
-  onAddArrow: () => void;
   onAddIcon: (iconId: string) => void;
   onAddImage: (src: string, naturalWidth: number, naturalHeight: number) => void;
-  onAddTable: () => void;
-  onAddField: () => void;
-  onDuplicate: () => void;
-  onDeleteSelected: () => void;
+  run: (id: MenuActionId, payload?: unknown) => void;
+  showGrid: boolean;
   onSelectPage: (id: string) => void;
   onAddPageAfter: (id: string) => void;
   onDuplicatePage: (id: string) => void;
@@ -75,26 +78,38 @@ interface PreviewPaneProps {
   onDismissCleanup?: () => void;
   shortcutsEnabled: boolean;
   labelSizes?: readonly LabelSize[];
+  sourcePages?: readonly SourceFilmstripInput[];
 }
 
 const ZOOM_STEP = 5;
 
-export function PreviewPane(props: PreviewPaneProps) {
+export const PreviewPane = forwardRef<PreviewCommandsHandle, PreviewPaneProps>(function PreviewPane(
+  props,
+  ref,
+) {
   const { t } = useI18n();
   const wellRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [wellSize, setWellSize] = useState({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(PREVIEW_ZOOM_DEFAULT);
-  const [showGrid, setShowGrid] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const selectedPage =
     props.pages.find((page) => page.id === props.selectedPageId) ?? props.pages[0] ?? null;
   const contentBox = selectedPage?.contentBox ?? null;
+  const filmstrip = sourceFilmstripItems(props.sourcePages ?? []);
   const pickImage = (): void => {
     imageInputRef.current?.click();
   };
+  useImperativeHandle(ref, () => ({
+    zoomIn: () => setZoom((current) => clampPreviewZoom(current + ZOOM_STEP)),
+    zoomOut: () => setZoom((current) => clampPreviewZoom(current - ZOOM_STEP)),
+    zoomActual: () => setZoom(PREVIEW_ZOOM_DEFAULT),
+    openPalette: () => setPaletteOpen(true),
+    openIconPicker: () => setIconPickerOpen(true),
+    pickImage,
+  }));
   const visibleWell = previewVisibleWell(wellSize.width, wellSize.height);
   const labelSize = previewLabelSize({
     wellWidth: visibleWell.width,
@@ -187,48 +202,16 @@ export function PreviewPane(props: PreviewPaneProps) {
   };
 
   useEditorShortcuts({
-    enabled: props.shortcutsEnabled && !paletteOpen && !iconPickerOpen,
-    onAddText: props.onAddText,
-    onAddQr: props.onAddQr,
-    onAddBarcode: props.onAddBarcode,
-    onAddRect: props.onAddRect,
-    onAddLine: props.onAddLine,
-    onAddCircle: props.onAddCircle,
-    onAddArrow: props.onAddArrow,
-    onAddIcon: () => setIconPickerOpen(true),
-    onAddImage: pickImage,
-    onAddTable: props.onAddTable,
-    onAddField: props.onAddField,
-    onDuplicate: props.onDuplicate,
-    onDeleteSelected: props.onDeleteSelected,
-    onToggleGrid: () => setShowGrid((current) => !current),
-    onOpenPalette: () => setPaletteOpen(true),
-    onEscape: () => {
-      setPaletteOpen(false);
-      setIconPickerOpen(false);
-      props.onSelect(null);
-    },
+    enabled: props.shortcutsEnabled,
+    run: props.run,
   });
 
   const dock = (orientation: 'vertical' | 'horizontal'): ReactElement => (
     <EditorDock
       orientation={orientation}
       selectedId={props.selectedId}
-      showGrid={showGrid}
-      onAddText={props.onAddText}
-      onAddQr={props.onAddQr}
-      onAddBarcode={props.onAddBarcode}
-      onAddRect={props.onAddRect}
-      onAddLine={props.onAddLine}
-      onAddCircle={props.onAddCircle}
-      onAddArrow={props.onAddArrow}
-      onAddIcon={() => setIconPickerOpen(true)}
-      onAddImage={pickImage}
-      onAddTable={props.onAddTable}
-      onAddField={props.onAddField}
-      onDuplicate={props.onDuplicate}
-      onDeleteSelected={props.onDeleteSelected}
-      onToggleGrid={() => setShowGrid((current) => !current)}
+      showGrid={props.showGrid}
+      run={props.run}
     />
   );
 
@@ -245,7 +228,6 @@ export function PreviewPane(props: PreviewPaneProps) {
         onOpenFile={props.onOpenDialog}
         onPageChange={props.onPageChange}
         showPagePicker={props.showSourcePagePicker !== false}
-        onOpenPalette={() => setPaletteOpen(true)}
         onLabelSize={props.onLabelSize}
         onConnectPrinter={props.onConnectPrinter}
         onPrint={props.onPrint}
@@ -283,15 +265,14 @@ export function PreviewPane(props: PreviewPaneProps) {
             reader.readAsDataURL(file);
           }}
         />
-        <div className="lg:hidden">{dock('horizontal')}</div>
-        <div className="flex min-h-0 flex-1">
-          <div className="hidden h-full lg:flex">{dock('vertical')}</div>
+        <div className="relative flex min-h-0 flex-1">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="relative min-h-0 flex-1">
             <div
               ref={wellRef}
               tabIndex={0}
               className={cn(
-                'canvas-grid min-h-0 flex-1 overflow-auto outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                'canvas-grid absolute inset-0 overflow-auto outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
                 dragOver && 'ring-2 ring-primary/50',
               )}
               aria-label={t('previewTitle')}
@@ -308,7 +289,10 @@ export function PreviewPane(props: PreviewPaneProps) {
               onDrop={onDrop}
             >
               <div
-                className="flex justify-center"
+                className={cn(
+                  'flex justify-center pt-20 lg:pt-3 lg:pl-32',
+                  filmstrip.length > 0 && 'pr-40',
+                )}
                 style={
                   documentSize
                     ? { minWidth: documentSize.width, minHeight: documentSize.height }
@@ -326,7 +310,7 @@ export function PreviewPane(props: PreviewPaneProps) {
                   pageWidth={labelSize.width}
                   pageHeight={labelSize.height}
                   measured={measured}
-                  showGrid={showGrid}
+                  showGrid={props.showGrid}
                   onSelectPage={props.onSelectPage}
                   onSelect={props.onSelect}
                   onContentBox={props.onContentBox}
@@ -336,6 +320,27 @@ export function PreviewPane(props: PreviewPaneProps) {
                   onDeletePage={props.onDeletePage}
                 />
               </div>
+            </div>
+            <div className="pointer-events-none absolute inset-0 hidden lg:block">
+              <div className="pointer-events-auto absolute top-3 bottom-3 left-3">
+                {dock('vertical')}
+              </div>
+            </div>
+            <div className="pointer-events-none absolute inset-x-0 top-0 lg:hidden">
+              <div className="pointer-events-auto px-3 pt-3">{dock('horizontal')}</div>
+            </div>
+            {filmstrip.length > 0 ? (
+              <div className="pointer-events-none absolute top-3 bottom-3 right-3">
+                <SourceFilmstrip
+                  items={filmstrip}
+                  selectedPageId={selectedPage?.id ?? props.selectedPageId}
+                  onSelectPage={(pageId) => {
+                    props.onSelectPage(pageId);
+                    props.onSelect(null);
+                  }}
+                />
+              </div>
+            ) : null}
             </div>
             <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/5 bg-ink-900 px-3 py-1.5">
               <p className="min-w-0 flex-1 truncate text-ui-2xs text-ink-500">
@@ -377,20 +382,7 @@ export function PreviewPane(props: PreviewPaneProps) {
       <EditorPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
-        onAddText={props.onAddText}
-        onAddQr={props.onAddQr}
-        onAddBarcode={props.onAddBarcode}
-        onAddRect={props.onAddRect}
-        onAddLine={props.onAddLine}
-        onAddCircle={props.onAddCircle}
-        onAddArrow={props.onAddArrow}
-        onAddIcon={() => setIconPickerOpen(true)}
-        onAddImage={pickImage}
-        onAddTable={props.onAddTable}
-        onAddField={props.onAddField}
-        onDuplicate={props.onDuplicate}
-        onDeleteSelected={props.onDeleteSelected}
-        onToggleGrid={() => setShowGrid((current) => !current)}
+        run={props.run}
       />
       <EditorIconPicker
         open={iconPickerOpen}
@@ -399,4 +391,4 @@ export function PreviewPane(props: PreviewPaneProps) {
       />
     </div>
   );
-}
+});

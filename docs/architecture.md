@@ -26,7 +26,7 @@ DEVICE
 
 - `@thermalbridge/thermal-core` — pure TypeScript raster + TSPL. No Electron or Node imports.
 - `@thermalbridge/printer-profiles` — Marklife X4 and generic 203 DPI TSPL defaults.
-- `@thermalbridge/shared` — IPC channels, settings, error codes, printer types.
+- `@thermalbridge/shared` — IPC channels, settings, error codes, printer types, menu command registry, and the pure `buildMenuTemplate` builder.
 - `@thermalbridge/cli` — `pnpm label:build` proof of concept.
 - `@thermalbridge/desktop` — Electron main, sandboxed renderer, preload API.
 - `native/printbridge` — Rust sidecar for discovery and RAW transport.

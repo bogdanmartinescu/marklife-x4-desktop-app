@@ -23,6 +23,7 @@ interface LabelSizeSelectProps {
   variant?: 'stack' | 'inline';
   maxWidthMm?: number;
   sizes?: readonly LabelSize[];
+  className?: string;
 }
 
 const GROUP_KEYS: Record<LabelSizeGroup, MessageKey> = {
@@ -56,7 +57,10 @@ export function LabelSizeSelect(props: LabelSizeSelectProps) {
     >
       <SelectTrigger
         size={inline ? 'sm' : 'default'}
-        className={cn(inline ? 'h-8 w-[10rem] shrink-0 border-white/5 bg-ink-800' : 'w-full')}
+        className={cn(
+          inline ? 'h-8 border-white/5 bg-ink-800' : 'w-full',
+          props.className,
+        )}
       >
         <SelectValue />
       </SelectTrigger>

@@ -31,6 +31,8 @@ export {
   AppSettingsPatchSchema,
   DEFAULT_APP_SETTINGS,
   SETTINGS_SCHEMA_VERSION,
+  LOCALES,
+  type Locale,
   type PrinterBinding,
   type AppSettings,
   type AppSettingsPatch,
@@ -58,3 +60,37 @@ export {
   type OverlaySnapshot,
   type TemplatePage,
 } from './library.js';
+export {
+  MENU_ACTION_IDS,
+  MENU_MESSAGES,
+  MenuActionIdSchema,
+  allCommandSpecs,
+  commandSpec,
+  hasModifierAccelerator,
+  menuLabel,
+  menuMessage,
+  type CommandSpec,
+  type MenuActionId,
+  type MenuMessageKey,
+} from './commands.js';
+export {
+  DEFAULT_MENU_STATE,
+  FIT_MODES,
+  MenuCommandSchema,
+  MenuStateSchema,
+  SCREEN_ACCELERATORS,
+  SCREENS,
+  type MenuCommand,
+  type MenuFitMode,
+  type MenuState,
+  type Screen,
+} from './menu-schemas.js';
+export {
+  buildMenuTemplate,
+  findActionItems,
+  type MenuActionItem,
+  type MenuItemSpec,
+  type MenuPlatform,
+  type MenuRole,
+  type MenuTemplateOptions,
+} from './menu-template.js';

@@ -10,6 +10,7 @@ import type {
   LabelTemplateMeta,
   MediaFileMeta,
   MediaFileResult,
+  MenuCommand,
   SaveLabelTemplateInput,
   PrinterInfo,
   PrintHistoryMeta,
@@ -75,5 +76,20 @@ export const thermalBridgeApi: ThermalBridgeAPI = {
       ipcRenderer.invoke(IpcChannel.LIBRARY_TEMPLATES_GET, { id }) as Promise<LabelTemplate>,
     removeTemplate: (id: string) =>
       ipcRenderer.invoke(IpcChannel.LIBRARY_TEMPLATES_REMOVE, { id }) as Promise<void>,
+  },
+  menu: {
+    setState: (state) => ipcRenderer.invoke(IpcChannel.MENU_STATE, state) as Promise<void>,
+    onCommand: (handler) => {
+      const listener = (_event: unknown, raw: unknown): void => {
+        if (typeof raw !== 'object' || raw === null || !('action' in raw)) {
+          return;
+        }
+        handler(raw as MenuCommand);
+      };
+      ipcRenderer.on(IpcChannel.MENU_COMMAND, listener);
+      return () => {
+        ipcRenderer.removeListener(IpcChannel.MENU_COMMAND, listener);
+      };
+    },
   },
 };

@@ -1,0 +1,375 @@
+import { z } from 'zod';
+import { LOCALES, type Locale } from './settings.js';
+
+export const MENU_ACTION_IDS = [
+  'file.open',
+  'file.saveTemplate',
+  'file.applyTemplate',
+  'file.exportDiagnostics',
+  'edit.duplicate',
+  'edit.delete',
+  'edit.deselect',
+  'insert.text',
+  'insert.qr',
+  'insert.barcode',
+  'insert.box',
+  'insert.line',
+  'insert.circle',
+  'insert.arrow',
+  'insert.icon',
+  'insert.image',
+  'insert.table',
+  'insert.field',
+  'label.size',
+  'label.addPage',
+  'label.duplicatePage',
+  'label.deletePage',
+  'label.fitMode',
+  'label.rotateLeft',
+  'label.rotateRight',
+  'label.enhance',
+  'label.revertEnhance',
+  'print.print',
+  'print.testPage',
+  'print.connect',
+  'print.selectPrinter',
+  'print.selectProfile',
+  'view.screen',
+  'view.zoomIn',
+  'view.zoomOut',
+  'view.zoomActual',
+  'view.toggleGrid',
+  'view.commandPalette',
+  'view.language',
+  'help.learnMore',
+] as const;
+
+export type MenuActionId = (typeof MENU_ACTION_IDS)[number];
+
+export const MenuActionIdSchema = z.enum(MENU_ACTION_IDS);
+
+export interface CommandSpec {
+  id: MenuActionId;
+  labelKey: MenuMessageKey;
+  accelerator: string;
+  registerAccelerator: boolean;
+}
+
+const COMMANDS: CommandSpec[] = [
+  { id: 'file.open', labelKey: 'fileOpen', accelerator: 'CmdOrCtrl+O', registerAccelerator: true },
+  {
+    id: 'file.saveTemplate',
+    labelKey: 'fileSaveTemplate',
+    accelerator: 'CmdOrCtrl+S',
+    registerAccelerator: true,
+  },
+  { id: 'file.applyTemplate', labelKey: 'fileApplyTemplate', accelerator: '', registerAccelerator: false },
+  {
+    id: 'file.exportDiagnostics',
+    labelKey: 'fileExportDiagnostics',
+    accelerator: '',
+    registerAccelerator: false,
+  },
+  { id: 'edit.duplicate', labelKey: 'editDuplicate', accelerator: 'CmdOrCtrl+D', registerAccelerator: true },
+  { id: 'edit.delete', labelKey: 'editDelete', accelerator: 'Backspace', registerAccelerator: false },
+  { id: 'edit.deselect', labelKey: 'editDeselect', accelerator: 'Escape', registerAccelerator: false },
+  { id: 'insert.text', labelKey: 'insertText', accelerator: 'T', registerAccelerator: false },
+  { id: 'insert.qr', labelKey: 'insertQr', accelerator: 'Q', registerAccelerator: false },
+  { id: 'insert.barcode', labelKey: 'insertBarcode', accelerator: 'B', registerAccelerator: false },
+  { id: 'insert.box', labelKey: 'insertBox', accelerator: 'R', registerAccelerator: false },
+  { id: 'insert.line', labelKey: 'insertLine', accelerator: 'L', registerAccelerator: false },
+  { id: 'insert.circle', labelKey: 'insertCircle', accelerator: 'O', registerAccelerator: false },
+  { id: 'insert.arrow', labelKey: 'insertArrow', accelerator: 'A', registerAccelerator: false },
+  { id: 'insert.icon', labelKey: 'insertIcon', accelerator: 'S', registerAccelerator: false },
+  { id: 'insert.image', labelKey: 'insertImage', accelerator: 'I', registerAccelerator: false },
+  { id: 'insert.table', labelKey: 'insertTable', accelerator: 'E', registerAccelerator: false },
+  { id: 'insert.field', labelKey: 'insertField', accelerator: 'F', registerAccelerator: false },
+  { id: 'label.size', labelKey: 'labelSize', accelerator: '', registerAccelerator: false },
+  { id: 'label.addPage', labelKey: 'labelAddPage', accelerator: '', registerAccelerator: false },
+  {
+    id: 'label.duplicatePage',
+    labelKey: 'labelDuplicatePage',
+    accelerator: '',
+    registerAccelerator: false,
+  },
+  { id: 'label.deletePage', labelKey: 'labelDeletePage', accelerator: '', registerAccelerator: false },
+  { id: 'label.fitMode', labelKey: 'labelFitMode', accelerator: '', registerAccelerator: false },
+  { id: 'label.rotateLeft', labelKey: 'labelRotateLeft', accelerator: '', registerAccelerator: false },
+  { id: 'label.rotateRight', labelKey: 'labelRotateRight', accelerator: '', registerAccelerator: false },
+  { id: 'label.enhance', labelKey: 'labelEnhance', accelerator: '', registerAccelerator: false },
+  {
+    id: 'label.revertEnhance',
+    labelKey: 'labelRevertEnhance',
+    accelerator: '',
+    registerAccelerator: false,
+  },
+  { id: 'print.print', labelKey: 'printPrint', accelerator: 'CmdOrCtrl+P', registerAccelerator: true },
+  { id: 'print.testPage', labelKey: 'printTestPage', accelerator: '', registerAccelerator: false },
+  {
+    id: 'print.connect',
+    labelKey: 'printConnect',
+    accelerator: 'CmdOrCtrl+Shift+P',
+    registerAccelerator: true,
+  },
+  {
+    id: 'print.selectPrinter',
+    labelKey: 'printSelectPrinter',
+    accelerator: '',
+    registerAccelerator: false,
+  },
+  {
+    id: 'print.selectProfile',
+    labelKey: 'printSelectProfile',
+    accelerator: '',
+    registerAccelerator: false,
+  },
+  { id: 'view.screen', labelKey: 'viewScreen', accelerator: '', registerAccelerator: false },
+  { id: 'view.zoomIn', labelKey: 'viewZoomIn', accelerator: 'CmdOrCtrl+=', registerAccelerator: true },
+  { id: 'view.zoomOut', labelKey: 'viewZoomOut', accelerator: 'CmdOrCtrl+-', registerAccelerator: true },
+  {
+    id: 'view.zoomActual',
+    labelKey: 'viewZoomActual',
+    accelerator: 'CmdOrCtrl+0',
+    registerAccelerator: true,
+  },
+  { id: 'view.toggleGrid', labelKey: 'viewToggleGrid', accelerator: 'G', registerAccelerator: false },
+  {
+    id: 'view.commandPalette',
+    labelKey: 'viewCommandPalette',
+    accelerator: 'CmdOrCtrl+K',
+    registerAccelerator: true,
+  },
+  { id: 'view.language', labelKey: 'viewLanguage', accelerator: '', registerAccelerator: false },
+  { id: 'help.learnMore', labelKey: 'helpLearnMore', accelerator: '', registerAccelerator: false },
+];
+
+const COMMAND_BY_ID = new Map<MenuActionId, CommandSpec>(COMMANDS.map((command) => [command.id, command]));
+
+export const MENU_MESSAGE_KEYS = [
+  'appMenu',
+  'fileMenu',
+  'editMenu',
+  'insertMenu',
+  'labelMenu',
+  'printMenu',
+  'viewMenu',
+  'windowMenu',
+  'helpMenu',
+  'fileOpen',
+  'fileSaveTemplate',
+  'fileApplyTemplate',
+  'fileExportDiagnostics',
+  'editDuplicate',
+  'editDelete',
+  'editDeselect',
+  'insertText',
+  'insertQr',
+  'insertBarcode',
+  'insertBox',
+  'insertLine',
+  'insertCircle',
+  'insertArrow',
+  'insertIcon',
+  'insertImage',
+  'insertTable',
+  'insertField',
+  'labelSize',
+  'labelAddPage',
+  'labelDuplicatePage',
+  'labelDeletePage',
+  'labelFitMode',
+  'labelFit',
+  'labelFill',
+  'labelActual',
+  'labelStretch',
+  'labelRotateLeft',
+  'labelRotateRight',
+  'labelEnhance',
+  'labelRevertEnhance',
+  'printPrint',
+  'printTestPage',
+  'printConnect',
+  'printSelectPrinter',
+  'printSelectProfile',
+  'viewScreen',
+  'viewScreenPrint',
+  'viewScreenPrinters',
+  'viewScreenCalibration',
+  'viewScreenDiagnostics',
+  'viewScreenHistory',
+  'viewScreenLibrary',
+  'viewZoomIn',
+  'viewZoomOut',
+  'viewZoomActual',
+  'viewToggleGrid',
+  'viewCommandPalette',
+  'viewLanguage',
+  'languageEn',
+  'languageRo',
+  'helpLearnMore',
+] as const;
+
+export type MenuMessageKey = (typeof MENU_MESSAGE_KEYS)[number];
+
+export const MENU_MESSAGES: Record<Locale, Record<MenuMessageKey, string>> = {
+  en: {
+    appMenu: 'ThermalBridge',
+    fileMenu: 'File',
+    editMenu: 'Edit',
+    insertMenu: 'Insert',
+    labelMenu: 'Label',
+    printMenu: 'Print',
+    viewMenu: 'View',
+    windowMenu: 'Window',
+    helpMenu: 'Help',
+    fileOpen: 'Open…',
+    fileSaveTemplate: 'Save as Template…',
+    fileApplyTemplate: 'Apply Template',
+    fileExportDiagnostics: 'Export Diagnostics…',
+    editDuplicate: 'Duplicate',
+    editDelete: 'Delete',
+    editDeselect: 'Deselect',
+    insertText: 'Text',
+    insertQr: 'QR Code',
+    insertBarcode: 'Barcode',
+    insertBox: 'Box',
+    insertLine: 'Line',
+    insertCircle: 'Circle',
+    insertArrow: 'Arrow',
+    insertIcon: 'Icon…',
+    insertImage: 'Image…',
+    insertTable: 'Table',
+    insertField: 'Date/Serial Field',
+    labelSize: 'Label Size',
+    labelAddPage: 'Add Page',
+    labelDuplicatePage: 'Duplicate Page',
+    labelDeletePage: 'Delete Page',
+    labelFitMode: 'Fit Mode',
+    labelFit: 'Fit',
+    labelFill: 'Fill',
+    labelActual: 'Actual',
+    labelStretch: 'Stretch',
+    labelRotateLeft: 'Rotate Left',
+    labelRotateRight: 'Rotate Right',
+    labelEnhance: 'Enhance Image',
+    labelRevertEnhance: 'Revert Enhancement',
+    printPrint: 'Print',
+    printTestPage: 'Print Test Page',
+    printConnect: 'Connect Printer…',
+    printSelectPrinter: 'Printer',
+    printSelectProfile: 'Profile',
+    viewScreen: 'Screen',
+    viewScreenPrint: 'Print',
+    viewScreenPrinters: 'Printers',
+    viewScreenCalibration: 'Calibration',
+    viewScreenDiagnostics: 'Diagnostics',
+    viewScreenHistory: 'History',
+    viewScreenLibrary: 'Library',
+    viewZoomIn: 'Zoom In',
+    viewZoomOut: 'Zoom Out',
+    viewZoomActual: 'Actual Size',
+    viewToggleGrid: 'Toggle Grid',
+    viewCommandPalette: 'Command Palette…',
+    viewLanguage: 'Language',
+    languageEn: 'English',
+    languageRo: 'Romanian',
+    helpLearnMore: 'Learn More',
+  },
+  ro: {
+    appMenu: 'ThermalBridge',
+    fileMenu: 'Fișier',
+    editMenu: 'Editare',
+    insertMenu: 'Inserare',
+    labelMenu: 'Etichetă',
+    printMenu: 'Printare',
+    viewMenu: 'Vizualizare',
+    windowMenu: 'Fereastră',
+    helpMenu: 'Ajutor',
+    fileOpen: 'Deschide…',
+    fileSaveTemplate: 'Salvează ca șablon…',
+    fileApplyTemplate: 'Aplică șablon',
+    fileExportDiagnostics: 'Exportă diagnostice…',
+    editDuplicate: 'Duplică',
+    editDelete: 'Șterge',
+    editDeselect: 'Deselectează',
+    insertText: 'Text',
+    insertQr: 'Cod QR',
+    insertBarcode: 'Cod de bare',
+    insertBox: 'Chenar',
+    insertLine: 'Linie',
+    insertCircle: 'Cerc',
+    insertArrow: 'Săgeată',
+    insertIcon: 'Pictogramă…',
+    insertImage: 'Imagine…',
+    insertTable: 'Tabel',
+    insertField: 'Câmp dată/serie',
+    labelSize: 'Dimensiune etichetă',
+    labelAddPage: 'Adaugă pagină',
+    labelDuplicatePage: 'Duplică pagina',
+    labelDeletePage: 'Șterge pagina',
+    labelFitMode: 'Mod încadrare',
+    labelFit: 'Încadrează',
+    labelFill: 'Umple',
+    labelActual: 'Real',
+    labelStretch: 'Întinde',
+    labelRotateLeft: 'Rotește stânga',
+    labelRotateRight: 'Rotește dreapta',
+    labelEnhance: 'Îmbunătățește imaginea',
+    labelRevertEnhance: 'Anulează îmbunătățirea',
+    printPrint: 'Printează',
+    printTestPage: 'Pagină de test',
+    printConnect: 'Conectează imprimanta…',
+    printSelectPrinter: 'Imprimantă',
+    printSelectProfile: 'Profil',
+    viewScreen: 'Ecran',
+    viewScreenPrint: 'Printare',
+    viewScreenPrinters: 'Imprimante',
+    viewScreenCalibration: 'Calibrare',
+    viewScreenDiagnostics: 'Diagnostice',
+    viewScreenHistory: 'Istoric',
+    viewScreenLibrary: 'Bibliotecă',
+    viewZoomIn: 'Mărește',
+    viewZoomOut: 'Micșorează',
+    viewZoomActual: 'Dimensiune reală',
+    viewToggleGrid: 'Grilă',
+    viewCommandPalette: 'Paletă de comenzi…',
+    viewLanguage: 'Limbă',
+    languageEn: 'Engleză',
+    languageRo: 'Română',
+    helpLearnMore: 'Află mai multe',
+  },
+};
+
+export function commandSpec(id: MenuActionId): CommandSpec {
+  const spec = COMMAND_BY_ID.get(id);
+  if (spec === undefined) {
+    throw new Error(`Unknown menu action: ${id}`);
+  }
+  return spec;
+}
+
+export function menuLabel(id: MenuActionId, locale: Locale): string {
+  return MENU_MESSAGES[locale][commandSpec(id).labelKey];
+}
+
+export function menuMessage(key: MenuMessageKey, locale: Locale): string {
+  return MENU_MESSAGES[locale][key];
+}
+
+export function allCommandSpecs(): readonly CommandSpec[] {
+  return COMMANDS;
+}
+
+export function hasModifierAccelerator(accelerator: string): boolean {
+  return /CmdOrCtrl|Command|Ctrl|Alt|Shift|Super|Meta/i.test(accelerator);
+}
+
+export function assertLocaleMenuParity(): void {
+  for (const locale of LOCALES) {
+    for (const key of MENU_MESSAGE_KEYS) {
+      if (MENU_MESSAGES[locale][key] === undefined) {
+        throw new Error(`Missing menu message ${key} for ${locale}`);
+      }
+    }
+  }
+}

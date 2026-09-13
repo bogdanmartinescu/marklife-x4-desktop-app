@@ -1,3 +1,4 @@
+import type { MenuCommand, MenuState } from './menu-schemas.js';
 import type { AppSettings, AppSettingsPatch } from './settings.js';
 import type { LabelTemplate, LabelTemplateMeta, MediaFileMeta, PrintHistoryMeta, TemplatePage } from './library.js';
 import type {
@@ -74,5 +75,9 @@ export interface ThermalBridgeAPI {
     saveTemplate(input: SaveLabelTemplateInput): Promise<LabelTemplate>;
     getTemplate(id: string): Promise<LabelTemplate>;
     removeTemplate(id: string): Promise<void>;
+  };
+  menu: {
+    setState(state: MenuState): Promise<void>;
+    onCommand(handler: (command: MenuCommand) => void): () => void;
   };
 }

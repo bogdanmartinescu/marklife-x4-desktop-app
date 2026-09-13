@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const LOCALES = ['en', 'ro'] as const;
+export type Locale = (typeof LOCALES)[number];
+
 export const PrinterBindingSchema = z.object({
   printerId: z.string().min(1),
   profileId: z.string().min(1),
@@ -48,6 +51,7 @@ export const AppSettingsSchema = z.object({
   defaultCopies: z.number().int().positive(),
   defaultDither: z.enum(['threshold', 'floyd-steinberg']),
   defaultThreshold: z.number().int().min(0).max(255),
+  sidebarCollapsed: z.boolean().default(false),
 });
 
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
@@ -72,4 +76,5 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   defaultCopies: 1,
   defaultDither: 'threshold',
   defaultThreshold: 128,
+  sidebarCollapsed: false,
 };

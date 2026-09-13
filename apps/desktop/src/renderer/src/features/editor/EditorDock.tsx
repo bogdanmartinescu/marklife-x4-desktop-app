@@ -16,6 +16,7 @@ import {
   Type,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { commandSpec, menuLabel, type MenuActionId } from '@thermalbridge/shared';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,8 +25,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
+import { displayAccelerator } from '@/features/commands/accelerator-display.js';
 import { useI18n } from '@/i18n/I18nProvider.js';
-import type { MessageKey } from '@/i18n/messages.js';
 import { cn } from '@/lib/utils.js';
 import { AWB_IMAGE_ID } from './LabelCanvas.js';
 
@@ -33,118 +34,75 @@ interface EditorDockProps {
   orientation?: 'vertical' | 'horizontal';
   selectedId: string | null;
   showGrid: boolean;
-  onAddText: () => void;
-  onAddQr: () => void;
-  onAddBarcode: () => void;
-  onAddRect: () => void;
-  onAddLine: () => void;
-  onAddCircle: () => void;
-  onAddArrow: () => void;
-  onAddIcon: () => void;
-  onAddImage: () => void;
-  onAddTable: () => void;
-  onAddField: () => void;
-  onDuplicate: () => void;
-  onDeleteSelected: () => void;
-  onToggleGrid: () => void;
+  run: (id: MenuActionId) => void;
 }
 
-type ToolAction = keyof Pick<
-  EditorDockProps,
-  | 'onAddText'
-  | 'onAddQr'
-  | 'onAddBarcode'
-  | 'onAddRect'
-  | 'onAddLine'
-  | 'onAddCircle'
-  | 'onAddArrow'
-  | 'onAddIcon'
-  | 'onAddImage'
-  | 'onAddTable'
-  | 'onAddField'
->;
-
-const PRIMARY_TOOLS: Array<{
-  key: MessageKey;
-  shortcut: string;
-  icon: LucideIcon;
-  action: ToolAction;
-}> = [
-  { key: 'editorAddText', shortcut: 'T', icon: Type, action: 'onAddText' },
-  { key: 'editorAddQr', shortcut: 'Q', icon: QrCode, action: 'onAddQr' },
-  { key: 'editorAddBarcode', shortcut: 'B', icon: Barcode, action: 'onAddBarcode' },
+const PRIMARY_TOOLS: Array<{ id: MenuActionId; icon: LucideIcon }> = [
+  { id: 'insert.text', icon: Type },
+  { id: 'insert.qr', icon: QrCode },
+  { id: 'insert.barcode', icon: Barcode },
 ];
 
-const SHAPE_TOOLS: Array<{
-  key: MessageKey;
-  shortcut: string;
-  icon: LucideIcon;
-  action: ToolAction;
-}> = [
-  { key: 'editorAddBox', shortcut: 'R', icon: Square, action: 'onAddRect' },
-  { key: 'editorAddLine', shortcut: 'L', icon: Minus, action: 'onAddLine' },
-  { key: 'editorAddCircle', shortcut: 'O', icon: Circle, action: 'onAddCircle' },
-  { key: 'editorAddArrow', shortcut: 'A', icon: ArrowRight, action: 'onAddArrow' },
+const SHAPE_TOOLS: Array<{ id: MenuActionId; icon: LucideIcon }> = [
+  { id: 'insert.box', icon: Square },
+  { id: 'insert.line', icon: Minus },
+  { id: 'insert.circle', icon: Circle },
+  { id: 'insert.arrow', icon: ArrowRight },
 ];
 
-const MORE_TOOLS: Array<{
-  key: MessageKey;
-  shortcut: string;
-  icon: LucideIcon;
-  action: ToolAction;
-}> = [
-  { key: 'editorAddIcon', shortcut: 'S', icon: TriangleAlert, action: 'onAddIcon' },
-  { key: 'editorAddImage', shortcut: 'I', icon: ImageIcon, action: 'onAddImage' },
-  { key: 'editorAddTable', shortcut: 'E', icon: Table, action: 'onAddTable' },
-  { key: 'editorAddField', shortcut: 'F', icon: CalendarClock, action: 'onAddField' },
+const MORE_TOOLS: Array<{ id: MenuActionId; icon: LucideIcon }> = [
+  { id: 'insert.icon', icon: TriangleAlert },
+  { id: 'insert.image', icon: ImageIcon },
+  { id: 'insert.table', icon: Table },
+  { id: 'insert.field', icon: CalendarClock },
 ];
 
 export function EditorDock(props: EditorDockProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const vertical = props.orientation !== 'horizontal';
   const tooltipSide = vertical ? 'right' : 'bottom';
 
   return (
     <div
       className={cn(
-        'flex shrink-0 bg-ink-950',
+        'flex rounded-xl border border-white/10 bg-ink-950/95 shadow-panel backdrop-blur-sm',
         vertical
-          ? 'h-full w-40 flex-col items-stretch justify-start gap-0.5 overflow-hidden border-r border-white/5 p-1.5'
-          : 'h-11 w-full flex-row items-center gap-0.5 overflow-x-auto border-b border-white/5 px-1.5',
+          ? 'h-full max-h-full w-[5.5rem] flex-col items-stretch justify-start gap-1 overflow-y-auto p-1.5'
+          : 'h-[4.25rem] w-full flex-row items-center gap-1 overflow-x-auto px-1.5',
       )}
     >
       {PRIMARY_TOOLS.map((tool) => (
         <DockBtn
-          key={tool.key}
+          key={tool.id}
           icon={tool.icon}
-          label={t(tool.key)}
-          shortcut={tool.shortcut}
+          label={menuLabel(tool.id, locale)}
+          shortcut={displayAccelerator(commandSpec(tool.id).accelerator)}
           side={tooltipSide}
-          labeled={vertical}
-          onClick={props[tool.action]}
+          labeled
+          onClick={() => props.run(tool.id)}
         />
       ))}
       <ShapesMenu
         side={tooltipSide}
-        labeled={vertical}
+        labeled
         label={t('editorAddShapes')}
         items={SHAPE_TOOLS.map((tool) => ({
-          key: tool.key,
-          label: t(tool.key),
-          shortcut: tool.shortcut,
+          id: tool.id,
+          label: menuLabel(tool.id, locale),
+          shortcut: displayAccelerator(commandSpec(tool.id).accelerator),
           icon: tool.icon,
-          onSelect: props[tool.action],
+          onSelect: () => props.run(tool.id),
         }))}
       />
       {MORE_TOOLS.map((tool) => (
         <DockBtn
-          key={tool.key}
+          key={tool.id}
           icon={tool.icon}
-          label={t(tool.key)}
-          shortcut={tool.shortcut}
+          label={menuLabel(tool.id, locale)}
+          shortcut={displayAccelerator(commandSpec(tool.id).accelerator)}
           side={tooltipSide}
-          labeled={vertical}
-          onClick={props[tool.action]}
+          labeled
+          onClick={() => props.run(tool.id)}
         />
       ))}
       <span
@@ -153,30 +111,30 @@ export function EditorDock(props: EditorDockProps) {
       />
       <DockBtn
         icon={Copy}
-        label={t('editorDuplicate')}
-        shortcut="⌘D"
+        label={menuLabel('edit.duplicate', locale)}
+        shortcut={displayAccelerator(commandSpec('edit.duplicate').accelerator)}
         side={tooltipSide}
-        labeled={vertical}
+        labeled
         disabled={!props.selectedId || props.selectedId === AWB_IMAGE_ID}
-        onClick={props.onDuplicate}
+        onClick={() => props.run('edit.duplicate')}
       />
       <DockBtn
         icon={Trash2}
-        label={t('editorDelete')}
-        shortcut="⌫"
+        label={menuLabel('edit.delete', locale)}
+        shortcut={displayAccelerator(commandSpec('edit.delete').accelerator)}
         side={tooltipSide}
-        labeled={vertical}
+        labeled
         disabled={!props.selectedId}
-        onClick={props.onDeleteSelected}
+        onClick={() => props.run('edit.delete')}
       />
       <DockBtn
         icon={Grid3x3}
-        label={t('editorGrid')}
-        shortcut="G"
+        label={menuLabel('view.toggleGrid', locale)}
+        shortcut={displayAccelerator(commandSpec('view.toggleGrid').accelerator)}
         side={tooltipSide}
-        labeled={vertical}
+        labeled
         active={props.showGrid}
-        onClick={props.onToggleGrid}
+        onClick={() => props.run('view.toggleGrid')}
       />
     </div>
   );
@@ -204,14 +162,18 @@ function DockBtn(props: {
           aria-pressed={props.active === true ? true : undefined}
           onClick={props.onClick}
           className={cn(
-            'flex shrink-0 items-center rounded-lg text-ink-300 hover:bg-ink-800 hover:text-ink-50 hover-fade',
-            labeled ? 'h-8 w-full gap-2 px-2' : 'size-9 justify-center',
+            'flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-ink-300 hover:bg-ink-800 hover:text-ink-50 hover-fade',
+            labeled ? 'w-full min-h-[3.75rem]' : 'size-12',
             props.active === true && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
             props.disabled === true && 'opacity-40',
           )}
         >
-          <Icon className="size-4 shrink-0" />
-          {labeled ? <span className="min-w-0 truncate text-left text-ui-xs">{props.label}</span> : null}
+          <Icon className="size-6 shrink-0" />
+          {labeled ? (
+            <span className="w-full text-center text-[10px] leading-tight text-balance line-clamp-2">
+              {props.label}
+            </span>
+          ) : null}
         </button>
       </TooltipTrigger>
       <TooltipContent side={props.side} sideOffset={6}>
@@ -226,7 +188,7 @@ function ShapesMenu(props: {
   labeled?: boolean;
   label: string;
   items: Array<{
-    key: MessageKey;
+    id: MenuActionId;
     label: string;
     shortcut: string;
     icon: LucideIcon;
@@ -243,13 +205,15 @@ function ShapesMenu(props: {
               type="button"
               aria-label={props.label}
               className={cn(
-                'flex shrink-0 items-center rounded-lg text-ink-300 hover:bg-ink-800 hover:text-ink-50 hover-fade',
-                labeled ? 'h-8 w-full gap-2 px-2' : 'size-9 justify-center',
+                'flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-ink-300 hover:bg-ink-800 hover:text-ink-50 hover-fade',
+                labeled ? 'w-full min-h-[3.75rem]' : 'size-12',
               )}
             >
-              <Shapes className="size-4 shrink-0" />
+              <Shapes className="size-6 shrink-0" />
               {labeled ? (
-                <span className="min-w-0 truncate text-left text-ui-xs">{props.label}</span>
+                <span className="w-full text-center text-[10px] leading-tight text-balance line-clamp-2">
+                  {props.label}
+                </span>
               ) : null}
             </button>
           </DropdownMenuTrigger>
@@ -267,7 +231,7 @@ function ShapesMenu(props: {
         {props.items.map((item) => {
           const Icon = item.icon;
           return (
-            <DropdownMenuItem key={item.key} onSelect={item.onSelect}>
+            <DropdownMenuItem key={item.id} onSelect={item.onSelect}>
               <Icon />
               {item.label}
               <DropdownMenuShortcut>{item.shortcut}</DropdownMenuShortcut>
