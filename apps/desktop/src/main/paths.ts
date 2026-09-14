@@ -58,3 +58,17 @@ export function resolvePrintbridgePath(): string {
 
   return candidates[0] ?? join(process.cwd(), 'printbridge');
 }
+
+export function resolveAppIconPath(): string | undefined {
+  const candidates = [
+    join(__dirname, '../../resources/icon.png'),
+    join(process.cwd(), 'resources/icon.png'),
+    join(app.getAppPath(), 'resources/icon.png'),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+}

@@ -42,6 +42,7 @@ function stubActions(): AppCommandActions {
     setScreen: vi.fn(),
     toggleGrid: vi.fn(),
     setLocale: vi.fn(),
+    openAbout: vi.fn(),
   };
 }
 
@@ -88,6 +89,7 @@ describe('createCommandHandlers', () => {
     expect(actions.selectPrinter).toHaveBeenCalledWith('cups:x');
     expect(actions.selectProfile).toHaveBeenCalledWith('marklife-x4');
     expect(actions.applyTemplate).toHaveBeenCalledWith('tmpl-1');
+    expect(actions.openAbout).toHaveBeenCalled();
     expect(preview.openPalette).toHaveBeenCalled();
     expect(preview.openIconPicker).toHaveBeenCalled();
     vi.useRealTimers();

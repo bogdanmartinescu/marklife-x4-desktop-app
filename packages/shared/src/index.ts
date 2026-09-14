@@ -23,6 +23,7 @@ export {
   type AddPrintHistoryInput,
   type SaveLabelTemplateInput,
   type MediaFileResult,
+  type SyncStatus,
 } from './api.js';
 export {
   PrinterBindingSchema,

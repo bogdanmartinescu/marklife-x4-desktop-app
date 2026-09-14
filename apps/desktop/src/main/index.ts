@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'node:path';
 import { DEFAULT_MENU_STATE, IpcChannel, MenuCommandSchema } from '@thermalbridge/shared';
+import { APP_DISPLAY_NAME, applyAppDisplayName } from './app-name.js';
 import { registerIpc } from './ipc/index.js';
 import { applyApplicationMenu } from './menu/apply.js';
 import { createLogger } from './logger.js';
@@ -10,6 +11,7 @@ import {
   jobTempDir,
   libraryDir,
   logsPath,
+  resolveAppIconPath,
   resolvePreloadPath,
   resolvePrintbridgePath,
   settingsPath,
@@ -17,6 +19,8 @@ import {
 import { LibraryStore } from './library/store.js';
 import { BridgeManager } from './printing/bridge-manager.js';
 import { SettingsStore } from './settings/store.js';
+
+applyAppDisplayName(app);
 
 const isDev = !app.isPackaged;
 
@@ -30,15 +34,17 @@ process.on('uncaughtException', (error) => {
 });
 
 function createWindow(): BrowserWindow {
+  const icon = resolveAppIconPath();
   const window = new BrowserWindow({
     width: 1440,
     height: 900,
     minWidth: 1240,
     minHeight: 720,
-    title: 'ThermalBridge',
+    title: APP_DISPLAY_NAME,
     show: false,
     backgroundColor: '#101216',
     autoHideMenuBar: false,
+    ...(icon !== undefined ? { icon } : {}),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -88,14 +94,20 @@ function createWindow(): BrowserWindow {
 app.whenReady().then(() => {
   const logger = createLogger('main', logsPath());
   const settings = new SettingsStore(settingsPath());
-  const library = new LibraryStore(libraryDir());
+  const localDir = libraryDir();
+  const syncFolder = settings.get().syncFolderPath;
+  const sharedDir = syncFolder ?? localDir;
+  const storeRef: { current: LibraryStore } = {
+    current: new LibraryStore({ localDir, sharedDir }),
+  };
   const bridge = new BridgeManager(resolvePrintbridgePath(), jobTempDir(), logger);
   bridge.start();
 
   registerIpc({
     bridge,
     settings,
-    library,
+    storeRef,
+    localDir,
     logger,
     appVersion: app.getVersion(),
   });
@@ -112,6 +124,11 @@ app.whenReady().then(() => {
       window?.webContents.send(IpcChannel.MENU_COMMAND, parsed);
     },
   });
+
+  const dockIcon = resolveAppIconPath();
+  if (process.platform === 'darwin' && dockIcon !== undefined) {
+    app.dock?.setIcon(dockIcon);
+  }
 
   createWindow();
 

@@ -12,6 +12,20 @@ describe('DEFAULT_APP_SETTINGS', () => {
     });
     expect(parsed.locale).toBe('ro');
     expect(parsed.sidebarCollapsed).toBe(false);
+    expect(parsed.syncFolderPath).toBeUndefined();
+  });
+
+  it('accepts an optional syncFolderPath', () => {
+    const parsed = AppSettingsSchema.parse({
+      ...DEFAULT_APP_SETTINGS,
+      syncFolderPath: '/Users/test/Dropbox/ThermalBridge',
+    });
+    expect(parsed.syncFolderPath).toBe('/Users/test/Dropbox/ThermalBridge');
+  });
+
+  it('accepts absence of syncFolderPath (undefined / missing)', () => {
+    const parsed = AppSettingsSchema.parse(DEFAULT_APP_SETTINGS);
+    expect(parsed.syncFolderPath).toBeUndefined();
   });
 
   it('defaults sidebarCollapsed when the field is missing', () => {

@@ -16,6 +16,7 @@ import type {
   PrintHistoryMeta,
   PrintRequest,
   PrintResult,
+  SyncStatus,
   SystemDiagnostics,
   TestPrintRequest,
   ThermalBridgeAPI,
@@ -89,6 +90,19 @@ export const thermalBridgeApi: ThermalBridgeAPI = {
       ipcRenderer.on(IpcChannel.MENU_COMMAND, listener);
       return () => {
         ipcRenderer.removeListener(IpcChannel.MENU_COMMAND, listener);
+      };
+    },
+  },
+  sync: {
+    getStatus: () => ipcRenderer.invoke(IpcChannel.SYNC_STATUS) as Promise<SyncStatus>,
+    chooseFolder: () => ipcRenderer.invoke(IpcChannel.SYNC_CHOOSE_FOLDER) as Promise<SyncStatus>,
+    disconnect: () => ipcRenderer.invoke(IpcChannel.SYNC_DISCONNECT) as Promise<SyncStatus>,
+    openFolder: (folderPath: string) => ipcRenderer.send(IpcChannel.SYNC_OPEN_FOLDER, folderPath),
+    onLibraryChanged: (handler) => {
+      const listener = (): void => handler();
+      ipcRenderer.on(IpcChannel.LIBRARY_CHANGED, listener);
+      return () => {
+        ipcRenderer.removeListener(IpcChannel.LIBRARY_CHANGED, listener);
       };
     },
   },

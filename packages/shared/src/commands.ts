@@ -41,6 +41,7 @@ export const MENU_ACTION_IDS = [
   'view.toggleGrid',
   'view.commandPalette',
   'view.language',
+  'help.about',
   'help.learnMore',
 ] as const;
 
@@ -140,6 +141,7 @@ const COMMANDS: CommandSpec[] = [
     registerAccelerator: true,
   },
   { id: 'view.language', labelKey: 'viewLanguage', accelerator: '', registerAccelerator: false },
+  { id: 'help.about', labelKey: 'helpAbout', accelerator: '', registerAccelerator: false },
   { id: 'help.learnMore', labelKey: 'helpLearnMore', accelerator: '', registerAccelerator: false },
 ];
 
@@ -206,6 +208,7 @@ export const MENU_MESSAGE_KEYS = [
   'viewLanguage',
   'languageEn',
   'languageRo',
+  'helpAbout',
   'helpLearnMore',
 ] as const;
 
@@ -273,6 +276,7 @@ export const MENU_MESSAGES: Record<Locale, Record<MenuMessageKey, string>> = {
     viewLanguage: 'Language',
     languageEn: 'English',
     languageRo: 'Romanian',
+    helpAbout: 'About ThermalBridge',
     helpLearnMore: 'Learn More',
   },
   ro: {
@@ -336,6 +340,7 @@ export const MENU_MESSAGES: Record<Locale, Record<MenuMessageKey, string>> = {
     viewLanguage: 'Limbă',
     languageEn: 'Engleză',
     languageRo: 'Română',
+    helpAbout: 'Despre ThermalBridge',
     helpLearnMore: 'Află mai multe',
   },
 };

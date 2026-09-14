@@ -85,7 +85,7 @@ export function buildMenuTemplate(options: MenuTemplateOptions): MenuItemSpec[] 
     menus.push({
       label: menuMessage('appMenu', locale),
       submenu: [
-        { role: 'about' },
+        actionItem('help.about', locale),
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -115,7 +115,9 @@ export function buildMenuTemplate(options: MenuTemplateOptions): MenuItemSpec[] 
   menus.push({
     label: menuMessage('helpMenu', locale),
     submenu: [
-      ...(platform === 'darwin' ? [] : [{ role: 'about' as const }, { type: 'separator' as const }]),
+      ...(platform === 'darwin'
+        ? []
+        : [actionItem('help.about', locale), { type: 'separator' as const }]),
       actionItem('help.learnMore', locale),
     ],
   });

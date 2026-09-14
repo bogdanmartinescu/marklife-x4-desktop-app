@@ -4,7 +4,7 @@ ThermalBridge uses a native Electron application menu. Labels, action ids, and a
 
 ## Structure
 
-- **ThermalBridge** (macOS) — About, Services, Hide, Hide Others, Quit
+- **ThermalBridge** (macOS) — About ThermalBridge (in-app dialog), Services, Hide, Hide Others, Quit
 - **File** — Open, Save as Template, Apply Template, Export Diagnostics, Close/Quit
 - **Edit** — Undo/Redo/Cut/Copy/Paste/Select All (Electron roles; this restores macOS clipboard shortcuts), then Duplicate, Delete, Deselect
 - **Insert** — text, codes, shapes, icon, image, table, field
@@ -12,7 +12,7 @@ ThermalBridge uses a native Electron application menu. Labels, action ids, and a
 - **Print** — print, test page, connect, printer and profile radios
 - **View** — screens `⌘1`–`⌘6`, zoom, grid, command palette, language
 - **Window** (macOS) — minimize, zoom, bring all to front
-- **Help** — Learn More (opens the GitHub repo). About is on Windows/Linux.
+- **Help** — Learn More (opens the GitHub repo). About ThermalBridge is on Windows/Linux (macOS keeps it on the app menu). The About dialog lists MLB DIGITAL COMMERCE SRL as maintainer.
 
 Dev-only Reload and Toggle DevTools appear on View when the app is unpackaged.
 

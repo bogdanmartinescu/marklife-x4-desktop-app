@@ -47,6 +47,7 @@ export interface AppCommandActions {
   setScreen(screen: Screen): void;
   toggleGrid(): void;
   setLocale(locale: Locale): void;
+  openAbout(): void;
 }
 
 export function createCommandHandlers(options: {
@@ -134,6 +135,7 @@ export function createCommandHandlers(options: {
         act().setLocale(locale);
       }
     },
+    'help.about': () => act().openAbout(),
     'help.learnMore': () => undefined,
   };
 }

@@ -1,4 +1,13 @@
 import type { MenuCommand, MenuState } from './menu-schemas.js';
+
+export interface SyncStatus {
+  /** Absolute path to the active shared folder, or null when sync is disabled. */
+  folderPath: string | null;
+  /** Suggested Dropbox folder path detected on this machine, or null if not found. */
+  dropboxSuggested: string | null;
+  /** True if Dropbox conflict copies of media.json or templates.json are present. */
+  conflicted: boolean;
+}
 import type { AppSettings, AppSettingsPatch } from './settings.js';
 import type { LabelTemplate, LabelTemplateMeta, MediaFileMeta, PrintHistoryMeta, TemplatePage } from './library.js';
 import type {
@@ -39,6 +48,13 @@ export interface SaveLabelTemplateInput {
 }
 
 export interface ThermalBridgeAPI {
+  sync: {
+    getStatus(): Promise<SyncStatus>;
+    chooseFolder(): Promise<SyncStatus>;
+    disconnect(): Promise<SyncStatus>;
+    openFolder(folderPath: string): void;
+    onLibraryChanged(handler: () => void): () => void;
+  };
   printers: {
     list(): Promise<PrinterInfo[]>;
     refresh(): Promise<PrinterInfo[]>;

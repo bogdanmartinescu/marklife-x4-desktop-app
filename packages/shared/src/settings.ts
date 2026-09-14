@@ -52,6 +52,12 @@ export const AppSettingsSchema = z.object({
   defaultDither: z.enum(['threshold', 'floyd-steinberg']),
   defaultThreshold: z.number().int().min(0).max(255),
   sidebarCollapsed: z.boolean().default(false),
+  /**
+   * Absolute path to the shared folder (e.g. a Dropbox directory) that holds
+   * media and templates. Machine-local: never copy this value to another machine.
+   * Absent means sync is disabled and data lives entirely under userData.
+   */
+  syncFolderPath: z.string().optional(),
 });
 
 export type AppSettings = z.infer<typeof AppSettingsSchema>;

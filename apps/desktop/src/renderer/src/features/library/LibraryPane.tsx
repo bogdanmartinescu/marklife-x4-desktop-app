@@ -2,6 +2,7 @@ import { FileText, ImageIcon, LayoutTemplate, Trash2 } from 'lucide-react';
 import type { LabelTemplateMeta, MediaFileMeta } from '@thermalbridge/shared';
 import { Button } from '@/components/ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { SyncFolderCard } from '@/features/library/SyncFolderCard.js';
 import { formatByteSize } from '@/features/library/print-history.js';
 import { useI18n } from '@/i18n/I18nProvider.js';
 
@@ -12,12 +13,15 @@ interface LibraryPaneProps {
   onDelete: (id: string) => void;
   onApplyTemplate: (id: string) => void;
   onDeleteTemplate: (id: string) => void;
+  /** Called after sync changes so the parent can reload library lists. */
+  onSyncChanged?: () => void;
 }
 
 export function LibraryPane(props: LibraryPaneProps) {
   const { t, locale } = useI18n();
   return (
     <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4">
+      <SyncFolderCard onChanged={props.onSyncChanged} />
       <Card>
         <CardHeader>
           <CardTitle>{t('templatesTitle')}</CardTitle>

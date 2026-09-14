@@ -43,17 +43,23 @@ import type { SettingsStore } from '../settings/store.js';
 import { AddHistorySchema, AddMediaSchema, BleScanSchema, LibraryIdSchema, PrintRequestSchema, SaveTemplateSchema, TestPrintRequestSchema } from './schemas.js';
 import { openBluetoothSettings } from '../bluetooth/open-settings.js';
 import { applyApplicationMenu } from '../menu/apply.js';
+import { registerOpenSyncFolderHandler, registerSyncIpc } from '../library/sync-ipc.js';
 
 const lastPrint: { current: PrintResult | null } = { current: null };
 
 export function registerIpc(options: {
   bridge: BridgeManager;
   settings: SettingsStore;
-  library: LibraryStore;
+  storeRef: { current: LibraryStore };
+  localDir: string;
   logger: Logger;
   appVersion: string;
 }): void {
-  const { bridge, settings, library, logger, appVersion } = options;
+  const { bridge, settings, storeRef, localDir, logger, appVersion } = options;
+  const library = (): LibraryStore => storeRef.current;
+
+  registerSyncIpc({ settings, localDir, storeRef });
+  registerOpenSyncFolderHandler();
 
   ipcMain.handle(IpcChannel.MENU_STATE, (_event, raw: unknown): void => {
     const state = MenuStateSchema.parse(raw);
@@ -313,54 +319,54 @@ export function registerIpc(options: {
     return { name: filePath.split(/[\\/]/).pop() ?? 'label', mimeType, data };
   });
 
-  ipcMain.handle(IpcChannel.LIBRARY_MEDIA_LIST, (): MediaFileMeta[] => library.listMedia());
+  ipcMain.handle(IpcChannel.LIBRARY_MEDIA_LIST, (): MediaFileMeta[] => library().listMedia());
 
   ipcMain.handle(IpcChannel.LIBRARY_MEDIA_ADD, (_event, raw: unknown): MediaFileMeta => {
     const parsed = AddMediaSchema.parse(raw);
-    return library.addMedia(parsed.name, parsed.mimeType, parsed.data);
+    return library().addMedia(parsed.name, parsed.mimeType, parsed.data);
   });
 
   ipcMain.handle(IpcChannel.LIBRARY_MEDIA_GET, (_event, raw: unknown): MediaFileResult => {
     const parsed = LibraryIdSchema.parse(raw);
-    return library.getMedia(parsed.id);
+    return library().getMedia(parsed.id);
   });
 
   ipcMain.handle(IpcChannel.LIBRARY_MEDIA_REMOVE, (_event, raw: unknown): void => {
     const parsed = LibraryIdSchema.parse(raw);
-    library.removeMedia(parsed.id);
+    library().removeMedia(parsed.id);
   });
 
-  ipcMain.handle(IpcChannel.LIBRARY_HISTORY_LIST, (): PrintHistoryMeta[] => library.listHistory());
+  ipcMain.handle(IpcChannel.LIBRARY_HISTORY_LIST, (): PrintHistoryMeta[] => library().listHistory());
 
   ipcMain.handle(IpcChannel.LIBRARY_HISTORY_ADD, (_event, raw: unknown): PrintHistoryMeta => {
     const parsed = AddHistorySchema.parse(raw);
-    return library.addHistory(parsed);
+    return library().addHistory(parsed);
   });
 
   ipcMain.handle(IpcChannel.LIBRARY_HISTORY_GET, (_event, raw: unknown): Uint8Array => {
     const parsed = LibraryIdSchema.parse(raw);
-    return library.getHistoryPng(parsed.id);
+    return library().getHistoryPng(parsed.id);
   });
 
   ipcMain.handle(IpcChannel.LIBRARY_HISTORY_REMOVE, (_event, raw: unknown): void => {
     const parsed = LibraryIdSchema.parse(raw);
-    library.removeHistory(parsed.id);
+    library().removeHistory(parsed.id);
   });
 
-  ipcMain.handle(IpcChannel.LIBRARY_TEMPLATES_LIST, (): LabelTemplateMeta[] => library.listTemplates());
+  ipcMain.handle(IpcChannel.LIBRARY_TEMPLATES_LIST, (): LabelTemplateMeta[] => library().listTemplates());
 
   ipcMain.handle(IpcChannel.LIBRARY_TEMPLATES_SAVE, (_event, raw: unknown): LabelTemplate => {
-    return library.saveTemplate(SaveTemplateSchema.parse(raw));
+    return library().saveTemplate(SaveTemplateSchema.parse(raw));
   });
 
   ipcMain.handle(IpcChannel.LIBRARY_TEMPLATES_GET, (_event, raw: unknown): LabelTemplate => {
     const parsed = LibraryIdSchema.parse(raw);
-    return library.getTemplate(parsed.id);
+    return library().getTemplate(parsed.id);
   });
 
   ipcMain.handle(IpcChannel.LIBRARY_TEMPLATES_REMOVE, (_event, raw: unknown): void => {
     const parsed = LibraryIdSchema.parse(raw);
-    library.removeTemplate(parsed.id);
+    library().removeTemplate(parsed.id);
   });
 }
 

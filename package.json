@@ -11,7 +11,7 @@
     "printbridge:build": "node scripts/build-printbridge.mjs",
     "lint": "eslint .",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test && node --test scripts/release-version.test.mjs",
+    "test": "pnpm -r --if-present test && node --test scripts/release-version.test.mjs scripts/brand-dev-electron.test.mjs",
     "test:coverage": "pnpm -r --if-present test:coverage",
     "version:check": "node scripts/release-version.mjs check",
     "version:bump": "node scripts/release-version.mjs bump",

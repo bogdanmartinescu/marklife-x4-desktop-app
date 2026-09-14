@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useI18n } from '@/i18n/I18nProvider.js';
 import type { MessageKey } from '@/i18n/messages.js';
 import { cn } from '@/lib/utils.js';
+import appIcon from '@/assets/app-icon.png';
 
 const NAV_GROUPS: Array<{
   labelKey: MessageKey;
@@ -42,9 +43,11 @@ export function AppSidebar(props: AppSidebarProps) {
   return (
     <aside className="flex w-14 shrink-0 flex-col overflow-hidden border-r border-white/5 bg-ink-950 px-1.5 py-3 text-ink-300">
       <div className="mb-4 flex justify-center">
-        <p className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-[10px] font-bold tracking-tight text-primary">
-          TB
-        </p>
+        <img
+          src={appIcon}
+          alt={t('appName')}
+          className="size-9 shrink-0 rounded-lg object-cover"
+        />
       </div>
       <nav className="flex min-h-0 flex-1 flex-col gap-3">
         {NAV_GROUPS.map((group, index) => (

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ZodType } from 'zod';
 import {
@@ -35,8 +35,35 @@ interface TemplateManifest {
   items: LabelTemplateMeta[];
 }
 
+export interface LibraryStoreOptions {
+  /**
+   * Directory that holds machine-local data (print history).
+   * When sync is disabled this also holds media and templates.
+   */
+  localDir: string;
+  /**
+   * Directory that holds shared data (media and templates).
+   * Set to the same value as `localDir` when sync is disabled.
+   */
+  sharedDir: string;
+}
+
 export class LibraryStore {
-  constructor(private readonly rootDir: string) {}
+  private readonly localDir: string;
+  private readonly sharedDir: string;
+
+  constructor(options: LibraryStoreOptions | string) {
+    if (typeof options === 'string') {
+      // Legacy single-root constructor — sync disabled.
+      this.localDir = options;
+      this.sharedDir = options;
+    } else {
+      this.localDir = options.localDir;
+      this.sharedDir = options.sharedDir;
+    }
+  }
+
+  // ── media ──────────────────────────────────────────────────────────────────
 
   listMedia(): MediaFileMeta[] {
     return this.readMedia().items;
@@ -86,6 +113,8 @@ export class LibraryStore {
     this.writeMedia({ items });
   }
 
+  // ── history ────────────────────────────────────────────────────────────────
+
   listHistory(): PrintHistoryMeta[] {
     return this.readHistory().items;
   }
@@ -125,6 +154,8 @@ export class LibraryStore {
     this.writeHistory({ items });
   }
 
+  // ── templates ──────────────────────────────────────────────────────────────
+
   listTemplates(): LabelTemplateMeta[] {
     return this.readTemplates().items;
   }
@@ -159,7 +190,7 @@ export class LibraryStore {
       throw new ThermalBridgeError('FILE_UNSUPPORTED', 'Template is larger than 2 MB');
     }
     this.ensureDirs();
-    writeFileSync(this.templatePath(item.id), json, 'utf8');
+    atomicWriteFile(this.templatePath(item.id), Buffer.from(json, 'utf8'));
     const meta = templateMeta(item);
     this.writeTemplates({
       items: capNewest(
@@ -191,31 +222,42 @@ export class LibraryStore {
     this.writeTemplates({ items });
   }
 
+  // ── private: paths ─────────────────────────────────────────────────────────
+
   private ensureDirs(): void {
-    mkdirSync(join(this.rootDir, 'media'), { recursive: true });
-    mkdirSync(join(this.rootDir, 'history'), { recursive: true });
-    mkdirSync(join(this.rootDir, 'templates'), { recursive: true });
+    mkdirSync(join(this.sharedDir, 'media'), { recursive: true });
+    mkdirSync(join(this.sharedDir, 'templates'), { recursive: true });
+    mkdirSync(join(this.localDir, 'history'), { recursive: true });
   }
 
+  /** Media files live in the shared root. */
   private mediaPath(id: string): string {
-    return join(this.rootDir, 'media', `${id}.bin`);
+    return join(this.sharedDir, 'media', `${id}.bin`);
   }
 
+  /** History is machine-local. */
   private historyPath(id: string): string {
-    return join(this.rootDir, 'history', `${id}.png`);
+    return join(this.localDir, 'history', `${id}.png`);
   }
 
+  /** Template bodies live in the shared root. */
   private templatePath(id: string): string {
-    return join(this.rootDir, 'templates', `${id}.json`);
+    return join(this.sharedDir, 'templates', `${id}.json`);
   }
 
   private mediaManifestPath(): string {
-    return join(this.rootDir, 'media.json');
+    return join(this.sharedDir, 'media.json');
   }
 
   private historyManifestPath(): string {
-    return join(this.rootDir, 'history.json');
+    return join(this.localDir, 'history.json');
   }
+
+  private templatesManifestPath(): string {
+    return join(this.sharedDir, 'templates.json');
+  }
+
+  // ── private: read/write ────────────────────────────────────────────────────
 
   private readMedia(): MediaManifest {
     return { items: readManifest(this.mediaManifestPath(), MediaFileMetaSchema) };
@@ -223,7 +265,7 @@ export class LibraryStore {
 
   private writeMedia(manifest: MediaManifest): void {
     this.ensureDirs();
-    writeFileSync(this.mediaManifestPath(), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    atomicWriteJson(this.mediaManifestPath(), manifest);
   }
 
   private readHistory(): HistoryManifest {
@@ -232,11 +274,7 @@ export class LibraryStore {
 
   private writeHistory(manifest: HistoryManifest): void {
     this.ensureDirs();
-    writeFileSync(this.historyManifestPath(), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
-  }
-
-  private templatesManifestPath(): string {
-    return join(this.rootDir, 'templates.json');
+    atomicWriteJson(this.historyManifestPath(), manifest);
   }
 
   private readTemplates(): TemplateManifest {
@@ -245,7 +283,7 @@ export class LibraryStore {
 
   private writeTemplates(manifest: TemplateManifest): void {
     this.ensureDirs();
-    writeFileSync(this.templatesManifestPath(), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    atomicWriteJson(this.templatesManifestPath(), manifest);
   }
 
   private readTemplateFile(id: string): LabelTemplate {
@@ -264,6 +302,22 @@ export class LibraryStore {
       // Missing files are fine during delete.
     }
   }
+}
+
+// ─── file utilities ───────────────────────────────────────────────────────────
+
+/**
+ * Write `data` to `destPath` atomically using a temp file + rename so the OS
+ * (and Dropbox) never observes a half-written file.
+ */
+function atomicWriteFile(destPath: string, data: Buffer): void {
+  const tmpPath = `${destPath}.tmp`;
+  writeFileSync(tmpPath, data);
+  renameSync(tmpPath, destPath);
+}
+
+function atomicWriteJson(destPath: string, value: unknown): void {
+  atomicWriteFile(destPath, Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8'));
 }
 
 function sha256Hex(data: Uint8Array): string {

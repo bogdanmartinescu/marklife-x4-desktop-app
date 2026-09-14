@@ -47,6 +47,7 @@ import { useCommands } from '@/features/commands/use-commands.js';
 import { useMenuSync } from '@/features/commands/use-menu-sync.js';
 import { AppSidebar } from '@/features/layout/AppSidebar.js';
 import { WorkspaceRightPane } from '@/features/layout/WorkspaceRightPane.js';
+import { AboutAppDialog } from '@/features/about/AboutAppDialog.js';
 import { SaveTemplateDialog } from '@/features/library/SaveTemplateDialog.js';
 import { CalibrationPane } from '@/features/calibration/CalibrationPane.js';
 import { HistoryPane } from '@/features/library/HistoryPane.js';
@@ -237,6 +238,7 @@ function AppShell(props: {
   const [historyItems, setHistoryItems] = useState<PrintHistoryMeta[]>([]);
   const [templateItems, setTemplateItems] = useState<LabelTemplateMeta[]>([]);
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const pageSourcesRef = useRef<PageSourceMap>({});
   const selectedPageIdRef = useRef(selectedPageId);
@@ -1095,6 +1097,28 @@ function AppShell(props: {
     }
   }, [screen, refreshLibrary]);
 
+  // Refresh media + templates (not history) when the shared folder changes on disk.
+  useEffect(() => {
+    if (!window.thermalBridge) {
+      return;
+    }
+    const unsubscribe = window.thermalBridge.sync.onLibraryChanged(() => {
+      if (!window.thermalBridge) {
+        return;
+      }
+      void Promise.all([
+        window.thermalBridge.library.listMedia(),
+        window.thermalBridge.library.listTemplates(),
+      ]).then(([media, templates]) => {
+        setMediaItems(media);
+        setTemplateItems(templates);
+      }).catch(() => {
+        // best-effort
+      });
+    });
+    return unsubscribe;
+  }, []);
+
   const reprintHistory = (id: string): void => {
     if (!draft.printerId) {
       setStatus(t('selectPrinterFirst'));
@@ -1346,6 +1370,7 @@ function AppShell(props: {
     setScreen,
     toggleGrid: () => setShowGrid((current) => !current),
     setLocale,
+    openAbout: () => setAboutOpen(true),
   };
   const actionsRef = useRef(commandActions);
   actionsRef.current = commandActions;
@@ -1709,6 +1734,7 @@ function AppShell(props: {
             items={mediaItems}
             templates={templateItems}
             onOpen={openMedia}
+            onSyncChanged={refreshLibrary}
             onDelete={(id) => {
               void window.thermalBridge.library.removeMedia(id).then(() => {
                 setMediaItems((current) => current.filter((item) => item.id !== id));
@@ -1723,6 +1749,7 @@ function AppShell(props: {
           />
         ) : null}
       </main>
+      <AboutAppDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <SaveTemplateDialog
         open={saveTemplateOpen}
         name={templateName}

@@ -18,6 +18,9 @@ describe('buildMenuTemplate', () => {
     expect(mac).toContain('ThermalBridge');
     expect(win).not.toContain('ThermalBridge');
     expect(win).toContain('File');
+    expect(findActionItems(build({}, 'darwin'), 'help.about')).toHaveLength(1);
+    expect(findActionItems(build({}, 'win32'), 'help.about')).toHaveLength(1);
+    expect(menuLabels(build({}, 'win32'))).toContain('About ThermalBridge');
   });
 
   it('registers modifier accelerators and leaves single keys unregistered', () => {
