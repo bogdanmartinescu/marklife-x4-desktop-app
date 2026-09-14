@@ -122,6 +122,7 @@ import { AWB_IMAGE_ID } from '@/features/editor/LabelCanvas.js';
 import { EditorInspector } from '@/features/editor/EditorInspector.js';
 import { PrintPane } from '@/features/print-settings/PrintPane.js';
 import { diagnosticRouteFromDraft } from '@/features/print-settings/diagnostic-route.js';
+import { removeBinding, upsertBinding } from '@/features/printers/bindings.js';
 import { ConnectPrinterDialog } from '@/features/printers/ConnectPrinterDialog.js';
 import {
   mergePrinterCatalog,
@@ -750,6 +751,26 @@ function AppShell(props: {
     await refreshUsb();
     await refreshSpp();
     const message = t('bound', { name: printer.name });
+    setStatus(message);
+    toast.success(message);
+  };
+
+  const forgetPrinter = async (printerId: string): Promise<void> => {
+    const currentBindings = props.settings?.bindings ?? [];
+    const forgotten = currentBindings.find((item) => item.printerId === printerId);
+    const nextBindings = removeBinding(currentBindings, printerId);
+    const clearing = draft.printerId === printerId || props.settings?.lastPrinterId === printerId;
+    const next = await window.thermalBridge.settings.update({
+      bindings: nextBindings,
+      ...(clearing ? { lastPrinterId: '' } : {}),
+    });
+    props.setSettings(next);
+    if (draft.printerId === printerId) {
+      updateDraft({ printerId: '' });
+    }
+    await refreshPrinters();
+    const name = forgotten?.displayName ?? printerId;
+    const message = t('printerForgotten', { name });
     setStatus(message);
     toast.success(message);
   };
@@ -1619,6 +1640,10 @@ function AppShell(props: {
             onScanBle={() => {
               void scanBle(BLE_MANUAL_SCAN_MS, true);
             }}
+            bindings={props.settings?.bindings ?? []}
+            onForget={(id) => {
+              void forgetPrinter(id);
+            }}
             onOpenBluetoothPairing={async () => {
               try {
                 await window.thermalBridge.printers.openBluetoothPairing();
@@ -1767,6 +1792,10 @@ function AppShell(props: {
         onScanBle={() => {
           void scanBle(BLE_MANUAL_SCAN_MS, true);
         }}
+        bindings={props.settings?.bindings ?? []}
+        onForget={(id) => {
+          void forgetPrinter(id);
+        }}
         onOpenBluetoothPairing={async () => {
           try {
             await window.thermalBridge.printers.openBluetoothPairing();
@@ -1782,12 +1811,6 @@ function AppShell(props: {
       />
     </div>
   );
-}
-
-function upsertBinding(list: PrinterBinding[], binding: PrinterBinding): PrinterBinding[] {
-  const next = list.filter((item) => item.printerId !== binding.printerId);
-  next.push(binding);
-  return next;
 }
 
 function formatError(error: unknown): string {

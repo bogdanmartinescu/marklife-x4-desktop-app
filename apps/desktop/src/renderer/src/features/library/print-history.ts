@@ -1,4 +1,4 @@
-import type { AddPrintHistoryInput } from '@thermalbridge/shared';
+import type { AddPrintHistoryInput, PrintHistoryMeta } from '@thermalbridge/shared';
 import type { PrintDraft } from '@/state/types.js';
 
 export function printHistoryInput(options: {
@@ -53,4 +53,69 @@ export function formatByteSize(bytes: number): string {
     return `${(bytes / 1024).toFixed(1)} KB`;
   }
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function formatWhen(iso: string, locale: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+  return date.toLocaleString(locale === 'ro' ? 'ro-RO' : 'en-GB');
+}
+
+export function historyDayKey(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+  const startOfDay = (value: Date): number =>
+    new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+  const diff = startOfDay(now) - startOfDay(date);
+  const dayMs = 24 * 60 * 60 * 1000;
+  if (diff === 0) {
+    return 'today';
+  }
+  if (diff === dayMs) {
+    return 'yesterday';
+  }
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function filterHistoryItems(
+  items: readonly PrintHistoryMeta[],
+  query: string,
+): PrintHistoryMeta[] {
+  const needle = query.trim().toLowerCase();
+  if (needle.length === 0) {
+    return [...items];
+  }
+  return items.filter((item) => {
+    const haystack = `${item.jobName} ${item.printerName}`.toLowerCase();
+    return haystack.includes(needle);
+  });
+}
+
+export interface HistoryDayGroup {
+  key: string;
+  items: PrintHistoryMeta[];
+}
+
+export function groupHistoryItems(
+  items: readonly PrintHistoryMeta[],
+  now: Date = new Date(),
+): HistoryDayGroup[] {
+  const groups: HistoryDayGroup[] = [];
+  for (const item of items) {
+    const key = historyDayKey(item.printedAt, now);
+    const current = groups[groups.length - 1];
+    if (current !== undefined && current.key === key) {
+      current.items.push(item);
+      continue;
+    }
+    groups.push({ key, items: [item] });
+  }
+  return groups;
 }

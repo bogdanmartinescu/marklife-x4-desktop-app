@@ -57,6 +57,19 @@ const MORE_TOOLS: Array<{ id: MenuActionId; icon: LucideIcon }> = [
   { id: 'insert.field', icon: CalendarClock },
 ];
 
+function dockTileClass(options: {
+  vertical: boolean;
+  active?: boolean;
+  disabled?: boolean;
+}): string {
+  return cn(
+    'flex shrink-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1.5 py-2.5 text-ink-200 hover:bg-ink-800 hover:text-ink-50 hover-fade',
+    options.vertical ? 'w-full min-h-[4.75rem]' : 'min-h-[4.75rem] w-[4.75rem]',
+    options.active === true && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
+    options.disabled === true && 'opacity-40',
+  );
+}
+
 export function EditorDock(props: EditorDockProps) {
   const { locale, t } = useI18n();
   const vertical = props.orientation !== 'horizontal';
@@ -65,10 +78,10 @@ export function EditorDock(props: EditorDockProps) {
   return (
     <div
       className={cn(
-        'flex rounded-xl border border-white/10 bg-ink-950/95 shadow-panel backdrop-blur-sm',
+        'flex rounded-2xl border border-white/10 bg-ink-950/95 shadow-panel backdrop-blur-sm',
         vertical
-          ? 'h-full max-h-full w-[5.5rem] flex-col items-stretch justify-start gap-1 overflow-y-auto p-1.5'
-          : 'h-[4.25rem] w-full flex-row items-center gap-1 overflow-x-auto px-1.5',
+          ? 'h-auto max-h-full w-28 flex-col items-stretch justify-start gap-0.5 overflow-y-auto p-2'
+          : 'h-[6rem] w-full flex-row items-center gap-0.5 overflow-x-auto px-2 py-1.5',
       )}
     >
       {PRIMARY_TOOLS.map((tool) => (
@@ -78,13 +91,13 @@ export function EditorDock(props: EditorDockProps) {
           label={menuLabel(tool.id, locale)}
           shortcut={displayAccelerator(commandSpec(tool.id).accelerator)}
           side={tooltipSide}
-          labeled
+          vertical={vertical}
           onClick={() => props.run(tool.id)}
         />
       ))}
       <ShapesMenu
         side={tooltipSide}
-        labeled
+        vertical={vertical}
         label={t('editorAddShapes')}
         items={SHAPE_TOOLS.map((tool) => ({
           id: tool.id,
@@ -101,12 +114,12 @@ export function EditorDock(props: EditorDockProps) {
           label={menuLabel(tool.id, locale)}
           shortcut={displayAccelerator(commandSpec(tool.id).accelerator)}
           side={tooltipSide}
-          labeled
+          vertical={vertical}
           onClick={() => props.run(tool.id)}
         />
       ))}
       <span
-        className={cn('bg-white/10', vertical ? 'mx-2 my-0.5 h-px' : 'mx-0.5 h-6 w-px')}
+        className={cn('bg-white/10', vertical ? 'mx-2 my-1 h-px' : 'mx-1 h-10 w-px')}
         aria-hidden
       />
       <DockBtn
@@ -114,7 +127,7 @@ export function EditorDock(props: EditorDockProps) {
         label={menuLabel('edit.duplicate', locale)}
         shortcut={displayAccelerator(commandSpec('edit.duplicate').accelerator)}
         side={tooltipSide}
-        labeled
+        vertical={vertical}
         disabled={!props.selectedId || props.selectedId === AWB_IMAGE_ID}
         onClick={() => props.run('edit.duplicate')}
       />
@@ -123,7 +136,7 @@ export function EditorDock(props: EditorDockProps) {
         label={menuLabel('edit.delete', locale)}
         shortcut={displayAccelerator(commandSpec('edit.delete').accelerator)}
         side={tooltipSide}
-        labeled
+        vertical={vertical}
         disabled={!props.selectedId}
         onClick={() => props.run('edit.delete')}
       />
@@ -132,7 +145,7 @@ export function EditorDock(props: EditorDockProps) {
         label={menuLabel('view.toggleGrid', locale)}
         shortcut={displayAccelerator(commandSpec('view.toggleGrid').accelerator)}
         side={tooltipSide}
-        labeled
+        vertical={vertical}
         active={props.showGrid}
         onClick={() => props.run('view.toggleGrid')}
       />
@@ -145,13 +158,12 @@ function DockBtn(props: {
   label: string;
   shortcut: string;
   side: 'right' | 'bottom';
-  labeled?: boolean;
+  vertical: boolean;
   active?: boolean;
   disabled?: boolean;
   onClick: () => void;
 }) {
   const Icon = props.icon;
-  const labeled = props.labeled === true;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -161,22 +173,19 @@ function DockBtn(props: {
           aria-label={props.label}
           aria-pressed={props.active === true ? true : undefined}
           onClick={props.onClick}
-          className={cn(
-            'flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-ink-300 hover:bg-ink-800 hover:text-ink-50 hover-fade',
-            labeled ? 'w-full min-h-[3.75rem]' : 'size-12',
-            props.active === true && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
-            props.disabled === true && 'opacity-40',
-          )}
+          className={dockTileClass({
+            vertical: props.vertical,
+            ...(props.active !== undefined ? { active: props.active } : {}),
+            ...(props.disabled !== undefined ? { disabled: props.disabled } : {}),
+          })}
         >
-          <Icon className="size-6 shrink-0" />
-          {labeled ? (
-            <span className="w-full text-center text-[10px] leading-tight text-balance line-clamp-2">
-              {props.label}
-            </span>
-          ) : null}
+          <Icon className="size-8 shrink-0" strokeWidth={1.75} />
+          <span className="w-full text-center text-[11px] font-medium leading-tight text-balance line-clamp-2">
+            {props.label}
+          </span>
         </button>
       </TooltipTrigger>
-      <TooltipContent side={props.side} sideOffset={6}>
+      <TooltipContent side={props.side} sideOffset={8}>
         {props.label} · {props.shortcut}
       </TooltipContent>
     </Tooltip>
@@ -185,7 +194,7 @@ function DockBtn(props: {
 
 function ShapesMenu(props: {
   side: 'right' | 'bottom';
-  labeled?: boolean;
+  vertical: boolean;
   label: string;
   items: Array<{
     id: MenuActionId;
@@ -195,30 +204,20 @@ function ShapesMenu(props: {
     onSelect: () => void;
   }>;
 }) {
-  const labeled = props.labeled === true;
   return (
     <DropdownMenu>
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label={props.label}
-              className={cn(
-                'flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-ink-300 hover:bg-ink-800 hover:text-ink-50 hover-fade',
-                labeled ? 'w-full min-h-[3.75rem]' : 'size-12',
-              )}
-            >
-              <Shapes className="size-6 shrink-0" />
-              {labeled ? (
-                <span className="w-full text-center text-[10px] leading-tight text-balance line-clamp-2">
-                  {props.label}
-                </span>
-              ) : null}
+            <button type="button" aria-label={props.label} className={dockTileClass({ vertical: props.vertical })}>
+              <Shapes className="size-8 shrink-0" strokeWidth={1.75} />
+              <span className="w-full text-center text-[11px] font-medium leading-tight text-balance line-clamp-2">
+                {props.label}
+              </span>
             </button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
-        <TooltipContent side={props.side} sideOffset={6}>
+        <TooltipContent side={props.side} sideOffset={8}>
           {props.label}
         </TooltipContent>
       </Tooltip>
@@ -232,7 +231,7 @@ function ShapesMenu(props: {
           const Icon = item.icon;
           return (
             <DropdownMenuItem key={item.id} onSelect={item.onSelect}>
-              <Icon />
+              <Icon className="size-4" strokeWidth={1.75} />
               {item.label}
               <DropdownMenuShortcut>{item.shortcut}</DropdownMenuShortcut>
             </DropdownMenuItem>

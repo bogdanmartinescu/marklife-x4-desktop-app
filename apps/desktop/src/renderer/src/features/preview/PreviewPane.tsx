@@ -290,7 +290,7 @@ export const PreviewPane = forwardRef<PreviewCommandsHandle, PreviewPaneProps>(f
             >
               <div
                 className={cn(
-                  'flex justify-center pt-20 lg:pt-3 lg:pl-32',
+                  'flex justify-center pt-28 lg:pt-3 lg:pl-40',
                   filmstrip.length > 0 && 'pr-40',
                 )}
                 style={
@@ -322,7 +322,7 @@ export const PreviewPane = forwardRef<PreviewCommandsHandle, PreviewPaneProps>(f
               </div>
             </div>
             <div className="pointer-events-none absolute inset-0 hidden lg:block">
-              <div className="pointer-events-auto absolute top-3 bottom-3 left-3">
+              <div className="pointer-events-auto absolute top-3 left-3 max-h-[calc(100%-1.5rem)]">
                 {dock('vertical')}
               </div>
             </div>

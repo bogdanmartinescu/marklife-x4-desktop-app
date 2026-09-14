@@ -20,8 +20,10 @@ interface ConnectPrinterDialogProps {
   scanning: boolean;
   scanError?: string | null;
   selectedId: string;
+  bindings?: readonly PrinterBinding[];
   onClose: () => void;
   onSelect: (printer: PrinterInfo, extra?: Partial<PrinterBinding>) => void;
+  onForget?: (id: string) => void;
   onRefresh: () => void;
   onRefreshUsb: () => void;
   onRefreshSpp: () => void;
@@ -56,13 +58,14 @@ export function ConnectPrinterDialog(props: ConnectPrinterDialogProps) {
               scanError={props.scanError ?? null}
               selectedId={props.selectedId}
               onSelect={props.onSelect}
+              {...(props.bindings !== undefined ? { bindings: props.bindings } : {})}
+              {...(props.onForget !== undefined ? { onForget: props.onForget } : {})}
               onRefresh={props.onRefresh}
               onRefreshUsb={props.onRefreshUsb}
               onRefreshSpp={props.onRefreshSpp}
               onScanBle={props.onScanBle}
               onOpenBluetoothPairing={props.onOpenBluetoothPairing}
-              initialTab="bluetooth"
-              initialBtMode="ble"
+              initialTab="ble"
             />
           </ScrollArea>
         </div>
