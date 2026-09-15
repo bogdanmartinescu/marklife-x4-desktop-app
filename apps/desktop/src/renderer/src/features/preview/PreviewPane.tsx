@@ -94,11 +94,25 @@ export const PreviewPane = forwardRef<PreviewCommandsHandle, PreviewPaneProps>(f
   const { t } = useI18n();
   const wellRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
   const [wellSize, setWellSize] = useState({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(PREVIEW_ZOOM_DEFAULT);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [dockPosition, setDockPosition] = useState(() => {
+    const stored = localStorage.getItem('editorDockPosition');
+    if (stored) {
+      try {
+        return JSON.parse(stored) as { x: number; y: number };
+      } catch {
+        return { x: 12, y: 12 };
+      }
+    }
+    return { x: 12, y: 12 };
+  });
+  const [isDraggingDock, setIsDraggingDock] = useState(false);
+  const dragStartPos = useRef({ x: 0, y: 0, dockX: 0, dockY: 0 });
   const selectedPage =
     props.pages.find((page) => page.id === props.selectedPageId) ?? props.pages[0] ?? null;
   const contentBox = selectedPage?.contentBox ?? null;
@@ -205,19 +219,61 @@ export const PreviewPane = forwardRef<PreviewCommandsHandle, PreviewPaneProps>(f
     }
   };
 
+  const handleDockMouseDown = (event: React.MouseEvent<HTMLDivElement>): void => {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="button"]')) return;
+    
+    event.preventDefault();
+    setIsDraggingDock(true);
+    dragStartPos.current = {
+      x: event.clientX,
+      y: event.clientY,
+      dockX: dockPosition.x,
+      dockY: dockPosition.y,
+    };
+  };
+
+  useEffect(() => {
+    if (!isDraggingDock) return;
+
+    const handleMouseMove = (event: MouseEvent): void => {
+      const deltaX = event.clientX - dragStartPos.current.x;
+      const deltaY = event.clientY - dragStartPos.current.y;
+      const newX = Math.max(0, dragStartPos.current.dockX + deltaX);
+      const newY = Math.max(0, dragStartPos.current.dockY + deltaY);
+      setDockPosition({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = (): void => {
+      setIsDraggingDock(false);
+      localStorage.setItem('editorDockPosition', JSON.stringify(dockPosition));
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingDock, dockPosition]);
+
   useEditorShortcuts({
     enabled: props.shortcutsEnabled,
     run: props.run,
   });
 
-  const dock = (orientation: 'vertical' | 'horizontal'): ReactElement => (
-    <EditorDock
-      orientation={orientation}
-      selectedId={props.selectedId}
-      showGrid={props.showGrid}
-      run={props.run}
-    />
-  );
+  const dock = (orientation: 'vertical' | 'horizontal'): ReactElement => {
+    return (
+      <EditorDock
+        orientation={orientation}
+        selectedId={props.selectedId}
+        showGrid={props.showGrid}
+        run={props.run}
+      />
+    );
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-ink-900">
@@ -329,7 +385,16 @@ export const PreviewPane = forwardRef<PreviewCommandsHandle, PreviewPaneProps>(f
               </div>
             </div>
             <div className="pointer-events-none absolute inset-0 hidden lg:block">
-              <div className="pointer-events-auto absolute top-3 left-3 max-h-[calc(100%-1.5rem)]">
+              <div
+                ref={dockRef}
+                className="pointer-events-auto absolute max-h-[calc(100%-1.5rem)]"
+                style={{
+                  left: `${dockPosition.x}px`,
+                  top: `${dockPosition.y}px`,
+                  cursor: isDraggingDock ? 'grabbing' : 'grab',
+                }}
+                onMouseDown={handleDockMouseDown}
+              >
                 {dock('vertical')}
               </div>
             </div>

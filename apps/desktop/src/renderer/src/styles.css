@@ -228,8 +228,8 @@
 .canvas-grid {
   background-color: #1a1f2b;
   background-image:
-    repeating-linear-gradient(0deg, rgb(255 255 255 / 4%) 0px, transparent 1px, transparent 20px, rgb(255 255 255 / 4%) 21px),
-    repeating-linear-gradient(90deg, rgb(255 255 255 / 4%) 0px, transparent 1px, transparent 20px, rgb(255 255 255 / 4%) 21px);
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 8%) 0px, transparent 1px, transparent 20px, rgb(255 255 255 / 8%) 21px),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 8%) 0px, transparent 1px, transparent 20px, rgb(255 255 255 / 8%) 21px);
   background-size: 20px 20px;
 }
 

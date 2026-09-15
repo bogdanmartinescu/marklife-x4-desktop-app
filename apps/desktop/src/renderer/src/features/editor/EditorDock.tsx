@@ -81,7 +81,7 @@ export function EditorDock(props: EditorDockProps) {
   return (
     <div
       className={cn(
-        'flex rounded-2xl border border-white/10 bg-ink-950/95 shadow-panel backdrop-blur-sm',
+        'flex rounded-2xl border border-white/10 bg-ink-950/95 shadow-panel backdrop-blur-sm select-none',
         vertical
           ? 'h-auto max-h-full w-[11.5rem] grid-cols-2 gap-1.5 overflow-y-auto p-2.5'
           : 'h-[6rem] w-full flex-row items-center gap-0.5 overflow-x-auto px-2 py-1.5',
