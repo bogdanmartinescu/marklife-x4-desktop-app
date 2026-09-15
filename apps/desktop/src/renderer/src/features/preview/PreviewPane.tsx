@@ -11,6 +11,7 @@ import type { LabelSize } from '@thermalbridge/printer-profiles';
 import type { MenuActionId } from '@thermalbridge/shared';
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import type { PreviewCommandsHandle } from '@/features/commands/command-handlers.js';
 import { EditorDock } from '@/features/editor/EditorDock.js';
 import { EditorIconPicker } from '@/features/editor/EditorIconPicker.js';
@@ -357,29 +358,39 @@ export const PreviewPane = forwardRef<PreviewCommandsHandle, PreviewPaneProps>(f
                 {props.widthMm} × {props.heightMm} mm · {props.dpi} DPI
               </p>
               <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={t('zoomOut')}
-                  disabled={zoom <= PREVIEW_ZOOM_MIN}
-                  onClick={() => nudgeZoom(-ZOOM_STEP)}
-                >
-                  <Minus />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={t('zoomOut')}
+                      disabled={zoom <= PREVIEW_ZOOM_MIN}
+                      onClick={() => nudgeZoom(-ZOOM_STEP)}
+                    >
+                      <Minus />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{t('zoomOut')}</TooltipContent>
+                </Tooltip>
                 <span className="w-10 text-center font-mono text-ui-2xs tabular-nums text-ink-300">
                   {zoom}%
                 </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={t('zoomIn')}
-                  disabled={zoom >= PREVIEW_ZOOM_MAX}
-                  onClick={() => nudgeZoom(ZOOM_STEP)}
-                >
-                  <Plus />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={t('zoomIn')}
+                      disabled={zoom >= PREVIEW_ZOOM_MAX}
+                      onClick={() => nudgeZoom(ZOOM_STEP)}
+                    >
+                      <Plus />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{t('zoomIn')}</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </div>

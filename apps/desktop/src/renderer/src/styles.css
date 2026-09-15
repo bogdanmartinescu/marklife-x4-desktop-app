@@ -226,10 +226,10 @@
 }
 
 .canvas-grid {
-  background-color: var(--color-canvas-bg);
+  background-color: #1a1f2b;
   background-image:
-    linear-gradient(to right, rgb(255 255 255 / 12%) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 12%) 1px, transparent 1px);
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 4%) 0px, transparent 1px, transparent 20px, rgb(255 255 255 / 4%) 21px),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 4%) 0px, transparent 1px, transparent 20px, rgb(255 255 255 / 4%) 21px);
   background-size: 20px 20px;
 }
 

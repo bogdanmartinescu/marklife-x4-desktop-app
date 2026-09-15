@@ -63,10 +63,13 @@ function dockTileClass(options: {
   disabled?: boolean;
 }): string {
   return cn(
-    'flex shrink-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1.5 py-2.5 text-ink-200 hover:bg-ink-800 hover:text-ink-50 hover-fade',
-    options.vertical ? 'w-full min-h-[4.75rem]' : 'min-h-[4.75rem] w-[4.75rem]',
-    options.active === true && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
-    options.disabled === true && 'opacity-40',
+    'group relative flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-ink-200 transition-all duration-150',
+    'hover:bg-ink-800 hover:text-ink-50 hover:shadow-sm hover:scale-[1.02]',
+    'active:scale-95',
+    options.vertical ? 'w-full aspect-square' : 'min-h-[4.75rem] w-[4.75rem]',
+    options.active === true && 'bg-primary/10 text-primary ring-1 ring-primary/30 hover:bg-primary/15 hover:text-primary',
+    options.disabled === true && 'opacity-40 cursor-not-allowed hover:scale-100',
+    !options.disabled && 'cursor-grab active:cursor-grabbing',
   );
 }
 
@@ -80,9 +83,10 @@ export function EditorDock(props: EditorDockProps) {
       className={cn(
         'flex rounded-2xl border border-white/10 bg-ink-950/95 shadow-panel backdrop-blur-sm',
         vertical
-          ? 'h-auto max-h-full w-28 flex-col items-stretch justify-start gap-0.5 overflow-y-auto p-2'
+          ? 'h-auto max-h-full w-[11.5rem] grid-cols-2 gap-1.5 overflow-y-auto p-2.5'
           : 'h-[6rem] w-full flex-row items-center gap-0.5 overflow-x-auto px-2 py-1.5',
       )}
+      style={vertical ? { display: 'grid' } : undefined}
     >
       {PRIMARY_TOOLS.map((tool) => (
         <DockBtn
@@ -118,10 +122,8 @@ export function EditorDock(props: EditorDockProps) {
           onClick={() => props.run(tool.id)}
         />
       ))}
-      <span
-        className={cn('bg-white/10', vertical ? 'mx-2 my-1 h-px' : 'mx-1 h-10 w-px')}
-        aria-hidden
-      />
+      {vertical && <div className="col-span-2 mx-2 my-0.5 h-px bg-white/10" aria-hidden />}
+      {!vertical && <span className="mx-1 h-10 w-px bg-white/10" aria-hidden />}
       <DockBtn
         icon={Copy}
         label={menuLabel('edit.duplicate', locale)}
@@ -173,14 +175,22 @@ function DockBtn(props: {
           aria-label={props.label}
           aria-pressed={props.active === true ? true : undefined}
           onClick={props.onClick}
+          draggable={props.disabled !== true}
+          onDragStart={(e) => {
+            if (props.disabled) {
+              e.preventDefault();
+              return;
+            }
+            e.dataTransfer.effectAllowed = 'move';
+          }}
           className={dockTileClass({
             vertical: props.vertical,
             ...(props.active !== undefined ? { active: props.active } : {}),
             ...(props.disabled !== undefined ? { disabled: props.disabled } : {}),
           })}
         >
-          <Icon className="size-8 shrink-0" strokeWidth={1.75} />
-          <span className="w-full text-center text-[11px] font-medium leading-tight text-balance line-clamp-2">
+          <Icon className="size-7 shrink-0 transition-transform group-hover:scale-110" strokeWidth={1.75} />
+          <span className="w-full text-center text-[10px] font-semibold leading-tight text-balance line-clamp-2">
             {props.label}
           </span>
         </button>
@@ -209,9 +219,17 @@ function ShapesMenu(props: {
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <button type="button" aria-label={props.label} className={dockTileClass({ vertical: props.vertical })}>
-              <Shapes className="size-8 shrink-0" strokeWidth={1.75} />
-              <span className="w-full text-center text-[11px] font-medium leading-tight text-balance line-clamp-2">
+            <button
+              type="button"
+              aria-label={props.label}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              className={dockTileClass({ vertical: props.vertical })}
+            >
+              <Shapes className="size-7 shrink-0 transition-transform group-hover:scale-110" strokeWidth={1.75} />
+              <span className="w-full text-center text-[10px] font-semibold leading-tight text-balance line-clamp-2">
                 {props.label}
               </span>
             </button>
