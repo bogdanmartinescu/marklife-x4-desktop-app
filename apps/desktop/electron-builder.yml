@@ -31,7 +31,6 @@ win:
 linux:
   icon: icon.png
   category: Utility
-  desktopName: ThermalBridge
   target:
     - AppImage
     - deb
