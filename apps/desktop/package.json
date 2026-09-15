@@ -4,11 +4,15 @@
   "version": "1.2.2",
   "private": true,
   "description": "Desktop app for thermal and inkjet label printing",
-  "author": "ThermalBridge",
-  "homepage": "https://github.com/bogdanmartinescu/marklife-x4-desktop-app",
+  "author": {
+    "name": "MLB Digital Commerce SRL",
+    "email": "hi@mlb.ro",
+    "url": "https://www.mlb.ro"
+  },
+  "homepage": "https://github.com/bogdanmartinescu/thermal-bridge",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bogdanmartinescu/marklife-x4-desktop-app.git"
+    "url": "https://github.com/bogdanmartinescu/thermal-bridge.git"
   },
   "type": "module",
   "main": "./out/main/index.js",

@@ -10,7 +10,7 @@ files:
 publish:
   provider: github
   owner: bogdanmartinescu
-  repo: marklife-x4-desktop-app
+  repo: thermal-bridge
   releaseType: release
 mac:
   icon: icon.png
