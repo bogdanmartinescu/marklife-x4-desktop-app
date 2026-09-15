@@ -50,6 +50,7 @@
   --color-ink-200: #c3c9d4;
   --color-ink-100: #e4e7ec;
   --color-ink-50: #f5f6f8;
+  --color-canvas-bg: #2a3240;
   --color-accent-500: #2ad0ff;
   --color-accent-600: #10b5e6;
   --color-accent-700: #0a8aba;
@@ -107,7 +108,7 @@
   --popover: #1a212c;
   --popover-foreground: #f5f6f8;
   --primary: #2ad0ff;
-  --primary-foreground: #ffffff;
+  --primary-foreground: #0a0d12;
   --secondary: #1f2732;
   --secondary-foreground: #e4e7ec;
   --muted: #1f2732;
@@ -115,16 +116,16 @@
   --accent: #1f2732;
   --accent-foreground: #f5f6f8;
   --destructive: #f87171;
-  --border: rgb(255 255 255 / 8%);
-  --input: rgb(255 255 255 / 8%);
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 10%);
   --ring: #2ad0ff;
   --sidebar: #0a0d12;
   --sidebar-foreground: #f5f6f8;
   --sidebar-primary: #2ad0ff;
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary-foreground: #0a0d12;
   --sidebar-accent: #1a212c;
   --sidebar-accent-foreground: #f5f6f8;
-  --sidebar-border: rgb(255 255 255 / 8%);
+  --sidebar-border: rgb(255 255 255 / 10%);
   --sidebar-ring: #2ad0ff;
 }
 
@@ -157,7 +158,7 @@
   * {
     @apply border-border outline-ring/50;
     scrollbar-width: thin;
-    scrollbar-color: rgb(255 255 255 / 15%) transparent;
+    scrollbar-color: rgb(255 255 255 / 20%) transparent;
   }
 
   html,
@@ -187,8 +188,8 @@
   }
 
   *::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
 
   *::-webkit-scrollbar-track {
@@ -196,12 +197,15 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background: rgb(255 255 255 / 15%);
-    border-radius: 4px;
+    background: rgb(255 255 255 / 18%);
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: rgb(255 255 255 / 25%);
+    background: rgb(255 255 255 / 28%);
+    background-clip: padding-box;
   }
 
   kbd {
@@ -222,22 +226,30 @@
 }
 
 .canvas-grid {
-  background-color: var(--color-ink-900);
+  background-color: var(--color-canvas-bg);
   background-image:
-    linear-gradient(to right, rgb(255 255 255 / 7%) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 7%) 1px, transparent 1px);
-  background-size: 24px 24px;
+    linear-gradient(to right, rgb(255 255 255 / 12%) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 12%) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 .dot-grid {
-  background-color: var(--color-ink-900);
-  background-image: radial-gradient(var(--color-ink-700) 1px, transparent 1px);
-  background-size: 16px 16px;
+  background-color: var(--color-canvas-bg);
+  background-image: radial-gradient(circle, rgb(255 255 255 / 18%) 1.5px, transparent 1.5px);
+  background-size: 12px 12px;
+  background-position: 0 0, 6px 6px;
+}
+
+.canvas-shadow {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 8%),
+    0 8px 32px -8px rgba(0, 0, 0, 0.4);
 }
 
 .hover-fade {
   transition:
     background-color 120ms ease,
     color 120ms ease,
-    border-color 120ms ease;
+    border-color 120ms ease,
+    box-shadow 120ms ease;
 }

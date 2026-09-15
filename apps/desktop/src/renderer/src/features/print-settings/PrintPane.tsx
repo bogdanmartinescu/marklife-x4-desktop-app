@@ -10,10 +10,10 @@ import {
 } from '@thermalbridge/printer-profiles';
 import type { FitMode, Rotation } from '@thermalbridge/thermal-core';
 import type { PrinterInfo } from '@thermalbridge/shared';
-import { RotateCcw, RotateCw, Sparkles, Undo2 } from 'lucide-react';
+import { HelpCircle, RotateCcw, RotateCw, Sparkles, Undo2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Alert, AlertDescription } from '@/components/ui/alert.js';
 import { Button } from '@/components/ui/button.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.js';
 import { Input } from '@/components/ui/input.js';
 import {
   Select,
@@ -123,7 +123,11 @@ export function PrintPane(props: PrintPaneProps) {
           <Field
             label={t('printer')}
             extra={
-              props.draft.printerId ? <ConnectionStatusBadge state={props.linkState} /> : null
+              <span className="flex items-center gap-1.5">
+                {props.draft.printerId ? <ConnectionStatusBadge state={props.linkState} /> : null}
+                {isX4 && isSpp ? <HelpTooltip text={t('protocol7Unimplemented')} /> : null}
+                {unsupportedReason ? <HelpTooltip text={unsupportedReason} /> : null}
+              </span>
             }
           >
             <Select
@@ -156,36 +160,21 @@ export function PrintPane(props: PrintPaneProps) {
             </Select>
           </Field>
           {isX4 && isSpp ? (
-            <Alert>
-              <AlertDescription>{t('protocol7Unimplemented')}</AlertDescription>
-            </Alert>
-          ) : null}
-          {isX4 && isSpp ? (
-            <label className="flex items-start gap-2.5 text-sm leading-snug">
+            <label className="flex items-center gap-2.5 text-sm">
               <Switch
-                className="mt-0.5"
                 checked={props.draft.diagnosticTsplOverSpp}
                 onCheckedChange={(checked) => props.onChange({ diagnosticTsplOverSpp: checked })}
               />
-              <span>
+              <span className="flex items-center gap-1">
                 {t('diagnosticTsplOverSpp')}
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  {t('diagnosticTsplOverSppHint')}
-                </span>
+                <HelpTooltip text={t('diagnosticTsplOverSppHint')} />
               </span>
             </label>
           ) : null}
-          {unsupportedReason ? (
-            <Alert>
-              <AlertDescription>{unsupportedReason}</AlertDescription>
-            </Alert>
-          ) : null}
-          {planned ? (
-            <Alert>
-              <AlertDescription>{t('profilePlanned', { name: profile.displayName })}</AlertDescription>
-            </Alert>
-          ) : null}
-          <Field label={t('profile')}>
+          <Field
+            label={t('profile')}
+            extra={planned ? <HelpTooltip text={t('profilePlanned', { name: profile.displayName })} /> : undefined}
+          >
             <Select
               value={props.draft.profileId}
               onValueChange={(value) => props.onChange({ profileId: value })}
@@ -521,8 +510,8 @@ export function PrintPane(props: PrintPaneProps) {
 
 function Section(props: { title: string; children: ReactNode }) {
   return (
-    <section className="space-y-3">
-      <h3 className="text-ui-2xs font-medium uppercase tracking-wide text-ink-500">{props.title}</h3>
+    <section className="space-y-3.5">
+      <h3 className="text-ui-2xs font-semibold uppercase tracking-wider text-ink-400">{props.title}</h3>
       {props.children}
     </section>
   );
@@ -534,5 +523,24 @@ function ToggleRow(props: { label: string; checked: boolean; onChange: (checked:
       <span>{props.label}</span>
       <Switch checked={props.checked} onCheckedChange={props.onChange} />
     </label>
+  );
+}
+
+function HelpTooltip({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label="Help"
+          className="text-ink-500 transition-colors hover:text-ink-300"
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs text-xs">
+        {text}
+      </TooltipContent>
+    </Tooltip>
   );
 }
