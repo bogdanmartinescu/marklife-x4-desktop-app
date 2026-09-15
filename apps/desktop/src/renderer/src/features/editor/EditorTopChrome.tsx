@@ -1,5 +1,5 @@
 import type { LabelSize } from '@thermalbridge/printer-profiles';
-import { FileUp, LayoutTemplate, Printer } from 'lucide-react';
+import { FileUp, LayoutTemplate } from 'lucide-react';
 import { LabelSizeSelect } from '@/features/preview/LabelSizeSelect.js';
 import type { LinkState } from '@/features/printers/connection-status.js';
 import { useI18n } from '@/i18n/I18nProvider.js';
@@ -19,14 +19,11 @@ interface EditorTopChromeProps {
   heightMm: number;
   printerName: string | null;
   linkState: LinkState;
-  printDisabled: boolean;
-  busy: boolean;
   onOpenFile: () => void;
   onPageChange: (page: number) => void;
   showPagePicker?: boolean;
   onLabelSize: (size: { widthMm: number; heightMm: number }) => void;
   onConnectPrinter: () => void;
-  onPrint: () => void;
   onSaveTemplate: () => void;
   labelSizes?: readonly LabelSize[];
 }
@@ -99,16 +96,6 @@ export function EditorTopChrome(props: EditorTopChromeProps) {
           )}
         />
         <span className="min-w-0 truncate">{props.printerName ?? t('connectPrinter')}</span>
-      </button>
-
-      <button
-        type="button"
-        disabled={props.printDisabled}
-        onClick={props.onPrint}
-        className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-ui-sm font-medium text-on-accent hover:bg-accent-600 hover-fade disabled:opacity-50"
-      >
-        <Printer className="size-3.5" />
-        <span className="min-w-0 truncate">{props.busy ? t('printing') : t('print')}</span>
       </button>
     </header>
   );

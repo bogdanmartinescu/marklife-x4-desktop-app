@@ -47,6 +47,7 @@ import { useCommands } from '@/features/commands/use-commands.js';
 import { useMenuSync } from '@/features/commands/use-menu-sync.js';
 import { AppSidebar } from '@/features/layout/AppSidebar.js';
 import { WorkspaceRightPane } from '@/features/layout/WorkspaceRightPane.js';
+import { FloatingPrintButton } from '@/features/layout/FloatingPrintButton.js';
 import { AboutAppDialog } from '@/features/about/AboutAppDialog.js';
 import { SaveTemplateDialog } from '@/features/library/SaveTemplateDialog.js';
 import { CalibrationPane } from '@/features/calibration/CalibrationPane.js';
@@ -1836,6 +1837,9 @@ function AppShell(props: {
           }
         }}
       />
+      {screen === 'print' && (
+        <FloatingPrintButton disabled={printDisabled} busy={busy} onClick={onPrint} />
+      )}
     </div>
   );
 }

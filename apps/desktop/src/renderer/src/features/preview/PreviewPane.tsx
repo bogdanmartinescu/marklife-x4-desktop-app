@@ -223,14 +223,11 @@ export const PreviewPane = forwardRef<PreviewCommandsHandle, PreviewPaneProps>(f
         heightMm={props.heightMm}
         printerName={props.printerName}
         linkState={props.linkState}
-        printDisabled={props.printDisabled}
-        busy={props.busy}
         onOpenFile={props.onOpenDialog}
         onPageChange={props.onPageChange}
         showPagePicker={props.showSourcePagePicker !== false}
         onLabelSize={props.onLabelSize}
         onConnectPrinter={props.onConnectPrinter}
-        onPrint={props.onPrint}
         onSaveTemplate={props.onSaveTemplate}
         {...(props.labelSizes !== undefined ? { labelSizes: props.labelSizes } : {})}
       />
