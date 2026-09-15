@@ -63,13 +63,13 @@ function dockTileClass(options: {
   disabled?: boolean;
 }): string {
   return cn(
-    'group relative flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2.5 text-ink-200 transition-all duration-150',
-    'hover:bg-ink-800 hover:text-ink-50 hover:shadow-sm hover:scale-[1.02]',
+    'group relative flex shrink-0 items-center justify-center rounded-lg transition-all duration-150',
+    'hover:bg-ink-800 hover:text-ink-50 hover:shadow-sm hover:scale-105',
     'active:scale-95',
-    options.vertical ? 'w-full aspect-square' : 'min-h-[4.75rem] w-[4.75rem]',
+    options.vertical ? 'w-full aspect-square p-2' : 'min-h-[4.75rem] w-[4.75rem] flex-col gap-1 px-2 py-2.5',
     options.active === true && 'bg-primary/10 text-primary ring-1 ring-primary/30 hover:bg-primary/15 hover:text-primary',
     options.disabled === true && 'opacity-40 cursor-not-allowed hover:scale-100',
-    !options.disabled && 'cursor-grab active:cursor-grabbing',
+    !options.disabled && 'cursor-grab active:cursor-grabbing text-ink-200',
   );
 }
 
@@ -83,10 +83,9 @@ export function EditorDock(props: EditorDockProps) {
       className={cn(
         'flex rounded-2xl border border-white/10 bg-ink-950/95 shadow-panel backdrop-blur-sm select-none',
         vertical
-          ? 'h-auto max-h-full w-[11.5rem] grid-cols-2 gap-1.5 overflow-y-auto p-2.5'
+          ? 'h-auto max-h-full w-16 flex-col items-stretch gap-1 overflow-y-auto p-1.5'
           : 'h-[6rem] w-full flex-row items-center gap-0.5 overflow-x-auto px-2 py-1.5',
       )}
-      style={vertical ? { display: 'grid' } : undefined}
     >
       {PRIMARY_TOOLS.map((tool) => (
         <DockBtn
@@ -122,7 +121,7 @@ export function EditorDock(props: EditorDockProps) {
           onClick={() => props.run(tool.id)}
         />
       ))}
-      {vertical && <div className="col-span-2 mx-2 my-0.5 h-px bg-white/10" aria-hidden />}
+      {vertical && <div className="mx-1.5 my-0.5 h-px bg-white/10" aria-hidden />}
       {!vertical && <span className="mx-1 h-10 w-px bg-white/10" aria-hidden />}
       <DockBtn
         icon={Copy}
@@ -189,10 +188,7 @@ function DockBtn(props: {
             ...(props.disabled !== undefined ? { disabled: props.disabled } : {}),
           })}
         >
-          <Icon className="size-7 shrink-0 transition-transform group-hover:scale-110" strokeWidth={1.75} />
-          <span className="w-full text-center text-[10px] font-semibold leading-tight text-balance line-clamp-2">
-            {props.label}
-          </span>
+          <Icon className="size-6 shrink-0 transition-transform group-hover:scale-110" strokeWidth={1.75} />
         </button>
       </TooltipTrigger>
       <TooltipContent side={props.side} sideOffset={8}>
@@ -228,10 +224,7 @@ function ShapesMenu(props: {
               }}
               className={dockTileClass({ vertical: props.vertical })}
             >
-              <Shapes className="size-7 shrink-0 transition-transform group-hover:scale-110" strokeWidth={1.75} />
-              <span className="w-full text-center text-[10px] font-semibold leading-tight text-balance line-clamp-2">
-                {props.label}
-              </span>
+              <Shapes className="size-6 shrink-0 transition-transform group-hover:scale-110" strokeWidth={1.75} />
             </button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
