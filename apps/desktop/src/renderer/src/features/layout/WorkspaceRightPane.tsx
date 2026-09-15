@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Printer } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import { useI18n } from '@/i18n/I18nProvider.js';
 
@@ -6,6 +7,9 @@ interface WorkspaceRightPaneProps {
   hasInspector: boolean;
   inspector: ReactNode;
   print: ReactNode;
+  printDisabled?: boolean;
+  busy?: boolean;
+  onPrint?: () => void;
 }
 
 export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
@@ -36,8 +40,21 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
             <p className="text-ui-xs text-ink-500">{t('inspectorEmpty')}</p>
           )}
         </TabsContent>
-        <TabsContent value="print" className="min-h-0 flex-1 overflow-hidden">
-          {props.print}
+        <TabsContent value="print" className="min-h-0 flex-1 overflow-hidden flex flex-col">
+          <div className="min-h-0 flex-1 overflow-hidden">{props.print}</div>
+          {props.onPrint ? (
+            <div className="shrink-0 border-t border-white/5 p-3">
+              <button
+                type="button"
+                disabled={props.printDisabled}
+                onClick={props.onPrint}
+                className="flex w-full h-12 items-center justify-center gap-2.5 rounded-lg bg-primary text-ui font-medium text-on-accent shadow-lg hover:bg-accent-600 hover-fade disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Printer className="size-5" />
+                <span>{props.busy ? t('printing') : t('print')}</span>
+              </button>
+            </div>
+          ) : null}
         </TabsContent>
       </Tabs>
     </aside>

@@ -1648,6 +1648,9 @@ function AppShell(props: {
                   onRevertEnhance={onRevertCleanup}
                 />
               }
+              printDisabled={printDisabled}
+              busy={busy}
+              onPrint={onPrint}
             />
           </div>
         ) : null}

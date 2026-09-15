@@ -1,7 +1,7 @@
 {
   "name": "@thermalbridge/desktop",
   "productName": "ThermalBridge",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "private": true,
   "description": "Desktop app for thermal and inkjet label printing",
   "author": {

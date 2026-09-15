@@ -14,21 +14,21 @@ const NAV_GROUPS: Array<{
 }> = [
   {
     labelKey: 'navGroupWorkspace',
-    items: [{ id: 'print', labelKey: 'navPrint', icon: <Printer /> }],
+    items: [{ id: 'print', labelKey: 'navPrint', icon: <Printer className="size-5" /> }],
   },
   {
     labelKey: 'navGroupContent',
     items: [
-      { id: 'history', labelKey: 'navHistory', icon: <History /> },
-      { id: 'library', labelKey: 'navLibrary', icon: <Images /> },
+      { id: 'history', labelKey: 'navHistory', icon: <History className="size-5" /> },
+      { id: 'library', labelKey: 'navLibrary', icon: <Images className="size-5" /> },
     ],
   },
   {
     labelKey: 'navGroupDevice',
     items: [
-      { id: 'setup', labelKey: 'navPrinters', icon: <Settings2 /> },
-      { id: 'calibration', labelKey: 'navCalibration', icon: <SlidersHorizontal /> },
-      { id: 'diagnostics', labelKey: 'navDiagnostics', icon: <Activity /> },
+      { id: 'setup', labelKey: 'navPrinters', icon: <Settings2 className="size-5" /> },
+      { id: 'calibration', labelKey: 'navCalibration', icon: <SlidersHorizontal className="size-5" /> },
+      { id: 'diagnostics', labelKey: 'navDiagnostics', icon: <Activity className="size-5" /> },
     ],
   },
 ];
@@ -41,15 +41,15 @@ interface AppSidebarProps {
 export function AppSidebar(props: AppSidebarProps) {
   const { t } = useI18n();
   return (
-    <aside className="flex w-14 shrink-0 flex-col overflow-hidden border-r border-white/5 bg-ink-950 px-1.5 py-3 text-ink-300">
-      <div className="mb-4 flex justify-center">
+    <aside className="flex w-16 shrink-0 flex-col overflow-hidden border-r border-white/5 bg-ink-950 text-ink-300">
+      <div className="flex h-16 items-center justify-center border-b border-white/5 shrink-0">
         <img
           src={appIcon}
           alt={t('appName')}
-          className="size-9 shrink-0 rounded-lg object-cover"
+          className="size-11 shrink-0 rounded-lg object-cover"
         />
       </div>
-      <nav className="flex min-h-0 flex-1 flex-col gap-3">
+      <nav className="flex min-h-0 flex-1 flex-col gap-3 px-2.5 pb-3">
         {NAV_GROUPS.map((group, index) => (
           <div key={group.labelKey} className="flex flex-col gap-0.5">
             {index > 0 ? <span className="mx-2 mb-1 h-px bg-white/10" aria-hidden /> : null}
@@ -61,7 +61,7 @@ export function AppSidebar(props: AppSidebarProps) {
                     variant="ghost"
                     aria-label={t(item.labelKey)}
                     className={cn(
-                      'h-9 w-full justify-center px-0 text-ink-300 hover:bg-ink-800 hover:text-ink-50',
+                      'size-11 justify-center px-0 text-ink-300 hover:bg-ink-800 hover:text-ink-50',
                       props.screen === item.id &&
                         'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
                     )}
