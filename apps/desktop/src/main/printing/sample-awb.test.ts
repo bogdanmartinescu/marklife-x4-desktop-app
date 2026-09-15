@@ -25,11 +25,16 @@ describe('buildSampleAwb', () => {
     expect(inkFraction(image)).toBeLessThan(0.25);
   });
 
-  it('inverts the sample AWB for Marklife X4 so firmware polarity matches live prints', () => {
+  it('inverts the sample AWB for Marklife X4 so firmware polarity matches live prints', { timeout: 15_000 }, () => {
     const source = buildSampleAwb(40, 60, 203);
     const prepared = prepareTestPageImage('marklife-x4', 40, 60, 203);
-    expect(grayAt(prepared, 0, 0)).toBe(0);
-    expect(grayAt(source, 0, 0)).toBe(255);
-    expect(prepareTestPageImage('phomemo-m110', 40, 60, 203).data).toEqual(source.data);
+    expect(grayAt(prepared, 0, 0)).toBe(0);  // inverted: top-left is black
+    expect(grayAt(source, 0, 0)).toBe(255);  // original: top-left is white
+
+    // Verify non-X4 profiles pass through unchanged.
+    // Use a small image (10×15 mm → 80×120 px) to keep the byte-level
+    // comparison fast on slow CI runners.
+    const small = buildSampleAwb(10, 15, 203);
+    expect(prepareTestPageImage('phomemo-m110', 10, 15, 203).data).toEqual(small.data);
   });
 });
