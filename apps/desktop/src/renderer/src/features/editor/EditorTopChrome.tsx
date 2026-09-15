@@ -1,5 +1,5 @@
 import type { LabelSize } from '@thermalbridge/printer-profiles';
-import { FileUp, LayoutTemplate } from 'lucide-react';
+import { FileUp, LayoutTemplate, Printer } from 'lucide-react';
 import { LabelSizeSelect } from '@/features/preview/LabelSizeSelect.js';
 import type { LinkState } from '@/features/printers/connection-status.js';
 import { useI18n } from '@/i18n/I18nProvider.js';
@@ -19,11 +19,14 @@ interface EditorTopChromeProps {
   heightMm: number;
   printerName: string | null;
   linkState: LinkState;
+  printDisabled: boolean;
+  busy: boolean;
   onOpenFile: () => void;
   onPageChange: (page: number) => void;
   showPagePicker?: boolean;
   onLabelSize: (size: { widthMm: number; heightMm: number }) => void;
   onConnectPrinter: () => void;
+  onPrint: () => void;
   onSaveTemplate: () => void;
   labelSizes?: readonly LabelSize[];
 }
@@ -33,14 +36,14 @@ export function EditorTopChrome(props: EditorTopChromeProps) {
   const source = props.source;
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 bg-ink-900 px-3">
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b border-white/5 bg-ink-900 px-3">
       <button
         type="button"
         onClick={props.onOpenFile}
-        className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border border-white/5 bg-ink-800 px-2.5 text-ui-sm text-ink-200 hover:bg-ink-750 hover:text-ink-50 hover-fade"
+        className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-white/5 bg-ink-800 px-3 text-ui-sm text-ink-200 hover:bg-ink-750 hover:text-ink-50 hover-fade"
         title={t('addFile')}
       >
-        <FileUp className="size-3.5 shrink-0 text-ink-400" />
+        <FileUp className="size-4 shrink-0 text-ink-400" />
         <span className="min-w-0 truncate">{source?.name ?? t('addFile')}</span>
       </button>
       {source !== null && source.pageCount > 1 && props.showPagePicker !== false ? (
@@ -48,7 +51,7 @@ export function EditorTopChrome(props: EditorTopChromeProps) {
           value={String(source.pageNumber)}
           onValueChange={(value) => props.onPageChange(Number(value))}
         >
-          <SelectTrigger size="sm" className="h-8 w-[5.5rem] shrink-0 border-white/5 bg-ink-800">
+          <SelectTrigger size="sm" className="h-10 w-[5.5rem] shrink-0 border-white/5 bg-ink-800">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -75,17 +78,17 @@ export function EditorTopChrome(props: EditorTopChromeProps) {
       <button
         type="button"
         onClick={props.onSaveTemplate}
-        className="flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md border border-white/5 bg-ink-800 px-2.5 text-ui-sm text-ink-200 hover:bg-ink-750 hover:text-ink-50 hover-fade"
+        className="flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md border border-white/5 bg-ink-800 px-3 text-ui-sm text-ink-200 hover:bg-ink-750 hover:text-ink-50 hover-fade"
         title={t('templatesSave')}
       >
-        <LayoutTemplate className="size-3.5 shrink-0 text-ink-400" />
+        <LayoutTemplate className="size-4 shrink-0 text-ink-400" />
         <span className="min-w-0 truncate">{t('templatesSave')}</span>
       </button>
 
       <button
         type="button"
         onClick={props.onConnectPrinter}
-        className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border border-white/5 bg-ink-800 px-2.5 text-ui-sm text-ink-200 hover:bg-ink-750 hover:text-ink-50 hover-fade"
+        className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-white/5 bg-ink-800 px-3 text-ui-sm text-ink-200 hover:bg-ink-750 hover:text-ink-50 hover-fade"
       >
         <span
           className={cn(
@@ -96,6 +99,16 @@ export function EditorTopChrome(props: EditorTopChromeProps) {
           )}
         />
         <span className="min-w-0 truncate">{props.printerName ?? t('connectPrinter')}</span>
+      </button>
+
+      <button
+        type="button"
+        disabled={props.printDisabled}
+        onClick={props.onPrint}
+        className="flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-ui-sm font-medium text-on-accent hover:bg-accent-600 hover-fade disabled:opacity-50"
+      >
+        <Printer className="size-4" />
+        <span className="min-w-0 truncate">{props.busy ? t('printing') : t('print')}</span>
       </button>
     </header>
   );

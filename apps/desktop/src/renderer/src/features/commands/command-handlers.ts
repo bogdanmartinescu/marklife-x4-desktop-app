@@ -46,6 +46,7 @@ export interface AppCommandActions {
   selectProfile(id: string): void;
   setScreen(screen: Screen): void;
   toggleGrid(): void;
+  toggleRuler(): void;
   setLocale(locale: Locale): void;
   openAbout(): void;
 }
@@ -128,6 +129,7 @@ export function createCommandHandlers(options: {
     'view.zoomOut': () => afterPrintScreen(() => preview()?.zoomOut()),
     'view.zoomActual': () => afterPrintScreen(() => preview()?.zoomActual()),
     'view.toggleGrid': () => act().toggleGrid(),
+    'view.toggleRuler': () => act().toggleRuler(),
     'view.commandPalette': () => afterPrintScreen(() => preview()?.openPalette()),
     'view.language': (payload) => {
       const locale = asLocale(payload);

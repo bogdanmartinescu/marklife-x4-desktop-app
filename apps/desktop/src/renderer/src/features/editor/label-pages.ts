@@ -135,6 +135,36 @@ export function removeLabelPage(pages: LabelPage[], id: string): LabelPage[] {
   return pages.filter((page) => page.id !== id);
 }
 
+export function moveLabelPageUp(pages: LabelPage[], id: string): LabelPage[] {
+  const index = pages.findIndex((page) => page.id === id);
+  if (index <= 0) {
+    return pages;
+  }
+  const next = [...pages];
+  const temp = next[index - 1];
+  const current = next[index];
+  if (temp !== undefined && current !== undefined) {
+    next[index - 1] = current;
+    next[index] = temp;
+  }
+  return next;
+}
+
+export function moveLabelPageDown(pages: LabelPage[], id: string): LabelPage[] {
+  const index = pages.findIndex((page) => page.id === id);
+  if (index < 0 || index >= pages.length - 1) {
+    return pages;
+  }
+  const next = [...pages];
+  const current = next[index];
+  const nextItem = next[index + 1];
+  if (current !== undefined && nextItem !== undefined) {
+    next[index] = nextItem;
+    next[index + 1] = current;
+  }
+  return next;
+}
+
 export function templatePagesFromLabel(
   pages: LabelPage[],
 ): Array<{ overlays: OverlayElement[] }> {

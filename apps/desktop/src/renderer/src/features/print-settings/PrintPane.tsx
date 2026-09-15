@@ -96,7 +96,6 @@ export function PrintPane(props: PrintPaneProps) {
   const unsupportedReason =
     resolvedRoute?.kind === 'unsupported' ? resolvedRoute.reason : undefined;
   const planned = profile.status === 'planned';
-  const printDisabled = props.busy || planned;
   const mediaModes = profile.mediaModes;
   const usesMediaDimensions = profileUsesMediaDimensions(profile);
   const languageBits = [
@@ -493,17 +492,11 @@ export function PrintPane(props: PrintPaneProps) {
           </Section>
         ) : null}
       </div>
-      <div className="mt-auto flex shrink-0 flex-col items-stretch gap-3 border-t border-white/5 px-4 pt-3">
-        <Button
-          variant="outline"
-          className="border-white/5 bg-ink-750"
-          disabled={printDisabled}
-          onClick={props.onTest}
-        >
-          {t('testPage')}
-        </Button>
-        {props.status ? <p className="mt-3 text-ui-xs text-ink-400">{props.status}</p> : null}
-      </div>
+      {props.status ? (
+        <div className="mt-auto flex shrink-0 flex-col items-stretch border-t border-white/5 px-4 pt-3">
+          <p className="text-ui-xs text-ink-400">{props.status}</p>
+        </div>
+      ) : null}
     </div>
   );
 }

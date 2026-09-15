@@ -61,10 +61,13 @@ interface PreviewPaneProps {
   onAddImage: (src: string, naturalWidth: number, naturalHeight: number) => void;
   run: (id: MenuActionId, payload?: unknown) => void;
   showGrid: boolean;
+  showRuler: boolean | undefined;
   onSelectPage: (id: string) => void;
   onAddPageAfter: (id: string) => void;
   onDuplicatePage: (id: string) => void;
   onDeletePage: (id: string) => void;
+  onMovePageUp: (id: string) => void;
+  onMovePageDown: (id: string) => void;
   onConnectPrinter: () => void;
   onLabelSize: (size: { widthMm: number; heightMm: number }) => void;
   onFile: (file: File) => void;
@@ -223,11 +226,14 @@ export const PreviewPane = forwardRef<PreviewCommandsHandle, PreviewPaneProps>(f
         heightMm={props.heightMm}
         printerName={props.printerName}
         linkState={props.linkState}
+        printDisabled={props.printDisabled}
+        busy={props.busy}
         onOpenFile={props.onOpenDialog}
         onPageChange={props.onPageChange}
         showPagePicker={props.showSourcePagePicker !== false}
         onLabelSize={props.onLabelSize}
         onConnectPrinter={props.onConnectPrinter}
+        onPrint={props.onPrint}
         onSaveTemplate={props.onSaveTemplate}
         {...(props.labelSizes !== undefined ? { labelSizes: props.labelSizes } : {})}
       />
@@ -308,6 +314,7 @@ export const PreviewPane = forwardRef<PreviewCommandsHandle, PreviewPaneProps>(f
                   pageHeight={labelSize.height}
                   measured={measured}
                   showGrid={props.showGrid}
+                  showRuler={props.showRuler}
                   onSelectPage={props.onSelectPage}
                   onSelect={props.onSelect}
                   onContentBox={props.onContentBox}
@@ -315,6 +322,8 @@ export const PreviewPane = forwardRef<PreviewCommandsHandle, PreviewPaneProps>(f
                   onAddPageAfter={props.onAddPageAfter}
                   onDuplicatePage={props.onDuplicatePage}
                   onDeletePage={props.onDeletePage}
+                  onMovePageUp={props.onMovePageUp}
+                  onMovePageDown={props.onMovePageDown}
                 />
               </div>
             </div>

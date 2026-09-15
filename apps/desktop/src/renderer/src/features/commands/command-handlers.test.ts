@@ -41,6 +41,7 @@ function stubActions(): AppCommandActions {
     selectProfile: vi.fn(),
     setScreen: vi.fn(),
     toggleGrid: vi.fn(),
+    toggleRuler: vi.fn(),
     setLocale: vi.fn(),
     openAbout: vi.fn(),
   };

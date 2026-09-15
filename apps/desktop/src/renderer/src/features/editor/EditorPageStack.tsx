@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Copy, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Copy, Plus, Trash2 } from 'lucide-react';
 import { LabelCanvas } from '@/features/editor/LabelCanvas.js';
 import type { LabelPage } from '@/features/editor/label-pages.js';
 import type { OverlayElement } from '@/features/editor/overlay.js';
@@ -19,6 +19,7 @@ interface EditorPageStackProps {
   pageHeight: number;
   measured: boolean;
   showGrid: boolean;
+  showRuler: boolean | undefined;
   onSelectPage: (id: string) => void;
   onSelect: (id: string | null) => void;
   onContentBox: (box: ContentBox) => void;
@@ -26,6 +27,8 @@ interface EditorPageStackProps {
   onAddPageAfter: (id: string) => void;
   onDuplicatePage: (id: string) => void;
   onDeletePage: (id: string) => void;
+  onMovePageUp: (id: string) => void;
+  onMovePageDown: (id: string) => void;
 }
 
 export function EditorPageStack(props: EditorPageStackProps) {
@@ -41,6 +44,8 @@ export function EditorPageStack(props: EditorPageStackProps) {
     <div className="flex flex-col items-center py-8">
       {props.pages.map((page, index) => {
         const selected = page.id === props.selectedPageId;
+        const canMoveUp = index > 0;
+        const canMoveDown = index < props.pages.length - 1;
         return (
           <div
             key={page.id}
@@ -49,13 +54,31 @@ export function EditorPageStack(props: EditorPageStackProps) {
           >
             <div className="group/page relative">
               <div className="mb-2 flex w-full items-center justify-between gap-2">
-                <p className="text-ui-xs font-medium text-ink-300">
+                <p className="text-ui-xs font-semibold text-ink-200">
                   {t('editorPageNumber', { n: index + 1 })}
                 </p>
                 <div className="flex gap-1 opacity-0 transition-opacity group-hover/page:opacity-100 group-focus-within/page:opacity-100">
                   <button
                     type="button"
-                    className="flex size-7 items-center justify-center rounded-md border border-white/5 bg-ink-800 text-ink-300 hover:bg-ink-750 hover:text-ink-50"
+                    disabled={!canMoveUp}
+                    className="flex size-7 items-center justify-center rounded-md border border-white/5 bg-ink-800 text-ink-300 hover:bg-ink-750 hover:text-ink-50 hover-fade disabled:opacity-30 disabled:cursor-not-allowed"
+                    title={t('editorMovePageUp') ?? 'Move page up'}
+                    onClick={() => props.onMovePageUp(page.id)}
+                  >
+                    <ArrowUp className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!canMoveDown}
+                    className="flex size-7 items-center justify-center rounded-md border border-white/5 bg-ink-800 text-ink-300 hover:bg-ink-750 hover:text-ink-50 hover-fade disabled:opacity-30 disabled:cursor-not-allowed"
+                    title={t('editorMovePageDown') ?? 'Move page down'}
+                    onClick={() => props.onMovePageDown(page.id)}
+                  >
+                    <ArrowDown className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    className="flex size-7 items-center justify-center rounded-md border border-white/5 bg-ink-800 text-ink-300 hover:bg-ink-750 hover:text-ink-50 hover-fade"
                     title={t('editorDuplicatePage')}
                     onClick={() => props.onDuplicatePage(page.id)}
                   >
@@ -64,7 +87,7 @@ export function EditorPageStack(props: EditorPageStackProps) {
                   <button
                     type="button"
                     disabled={!canDelete}
-                    className="flex size-7 items-center justify-center rounded-md border border-white/5 bg-ink-800 text-ink-300 hover:bg-ink-750 hover:text-ink-50 disabled:opacity-30"
+                    className="flex size-7 items-center justify-center rounded-md border border-white/5 bg-ink-800 text-ink-300 hover:bg-red-500 hover:text-white hover-fade disabled:opacity-30 disabled:cursor-not-allowed"
                     title={t('editorDeletePage')}
                     onClick={() => props.onDeletePage(page.id)}
                   >
@@ -74,8 +97,10 @@ export function EditorPageStack(props: EditorPageStackProps) {
               </div>
               <div
                 className={cn(
-                  'relative block overflow-hidden bg-white shadow-[0_18px_50px_rgba(0,0,0,0.45)]',
-                  selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-ink-900' : 'ring-1 ring-black/10',
+                  'relative block overflow-hidden rounded-sm bg-white shadow-[0_18px_50px_rgba(0,0,0,0.45)] transition-all hover-fade',
+                  selected
+                    ? 'ring-2 ring-primary ring-offset-2 ring-offset-ink-900'
+                    : 'ring-1 ring-black/10 hover:ring-white/20',
                 )}
                 style={
                   props.measured
@@ -106,6 +131,7 @@ export function EditorPageStack(props: EditorPageStackProps) {
                       stageWidth={props.pageWidth}
                       stageHeight={props.pageHeight}
                       showGrid={props.showGrid}
+                      showRuler={props.showRuler}
                       onSelect={(id) => {
                         props.onSelectPage(page.id);
                         props.onSelect(id);

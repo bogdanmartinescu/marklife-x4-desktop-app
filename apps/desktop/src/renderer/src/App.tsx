@@ -47,7 +47,6 @@ import { useCommands } from '@/features/commands/use-commands.js';
 import { useMenuSync } from '@/features/commands/use-menu-sync.js';
 import { AppSidebar } from '@/features/layout/AppSidebar.js';
 import { WorkspaceRightPane } from '@/features/layout/WorkspaceRightPane.js';
-import { FloatingPrintButton } from '@/features/layout/FloatingPrintButton.js';
 import { AboutAppDialog } from '@/features/about/AboutAppDialog.js';
 import { SaveTemplateDialog } from '@/features/library/SaveTemplateDialog.js';
 import { CalibrationPane } from '@/features/calibration/CalibrationPane.js';
@@ -103,6 +102,8 @@ import {
   pagesForImportedPdf,
   duplicateLabelPage,
   insertLabelPageAfter,
+  moveLabelPageUp,
+  moveLabelPageDown,
   pagesFromTemplate,
   removeLabelPage,
   resolveSelectedPage,
@@ -213,6 +214,7 @@ function AppShell(props: {
   const previewRef = useRef<PreviewCommandsHandle>(null);
   const [screen, setScreen] = useState<Screen>('print');
   const [showGrid, setShowGrid] = useState(false);
+  const [showRuler, setShowRuler] = useState(false);
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [usbDevices, setUsbDevices] = useState<PrinterInfo[]>([]);
   const [sppPorts, setSppPorts] = useState<PrinterInfo[]>([]);
@@ -1370,6 +1372,7 @@ function AppShell(props: {
     selectProfile: (id) => updateDraft({ profileId: id }),
     setScreen,
     toggleGrid: () => setShowGrid((current) => !current),
+    toggleRuler: () => setShowRuler((current) => !current),
     setLocale,
     openAbout: () => setAboutOpen(true),
   };
@@ -1493,6 +1496,12 @@ function AppShell(props: {
                 }
                 setSelectedId(null);
               }}
+              onMovePageUp={(id) => {
+                setPages((current) => moveLabelPageUp(current, id));
+              }}
+              onMovePageDown={(id) => {
+                setPages((current) => moveLabelPageDown(current, id));
+              }}
               onOverlayChange={(id, patch) =>
                 patchSelectedOverlays((current) =>
                   current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
@@ -1506,6 +1515,7 @@ function AppShell(props: {
               }
               run={run}
               showGrid={showGrid}
+              showRuler={showRuler}
               sourcePages={pages.flatMap((page) => {
                 const assets = pageSources[page.id];
                 if (!assets) {
@@ -1837,9 +1847,6 @@ function AppShell(props: {
           }
         }}
       />
-      {screen === 'print' && (
-        <FloatingPrintButton disabled={printDisabled} busy={busy} onClick={onPrint} />
-      )}
     </div>
   );
 }

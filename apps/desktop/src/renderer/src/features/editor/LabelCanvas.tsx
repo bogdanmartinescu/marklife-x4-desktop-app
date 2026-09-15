@@ -19,6 +19,7 @@ interface LabelCanvasProps {
   stageWidth: number;
   stageHeight: number;
   showGrid: boolean;
+  showRuler: boolean | undefined;
   onSelect: (id: string | null) => void;
   onContentBox: (box: ContentBox) => void;
   onOverlayChange: (id: string, patch: Partial<OverlayElement>) => void;
@@ -523,6 +524,55 @@ export function LabelCanvas(props: LabelCanvasProps) {
     }
   }
 
+  const rulerMarks: Array<{
+    x: number;
+    y: number;
+    points?: number[];
+    text?: string;
+    rotation?: number;
+  }> = [];
+  if (props.showRuler) {
+    // Top ruler (horizontal)
+    const hStep = props.widthMm <= 60 ? 5 : props.widthMm <= 120 ? 10 : 20;
+    for (let mm = 0; mm <= props.widthMm; mm += hStep) {
+      const x = mmToStage(mm, props.widthMm, props.stageWidth);
+      const isMajor = mm % (hStep * 2) === 0;
+      const tickHeight = isMajor ? 8 : 5;
+      rulerMarks.push({
+        x,
+        y: 0,
+        points: [0, 0, 0, tickHeight],
+      });
+      if (isMajor && mm > 0 && mm < props.widthMm) {
+        rulerMarks.push({
+          x,
+          y: 12,
+          text: String(mm),
+        });
+      }
+    }
+    // Left ruler (vertical)
+    const vStep = props.heightMm <= 60 ? 5 : props.heightMm <= 120 ? 10 : 20;
+    for (let mm = 0; mm <= props.heightMm; mm += vStep) {
+      const y = mmToStage(mm, props.heightMm, props.stageHeight);
+      const isMajor = mm % (vStep * 2) === 0;
+      const tickWidth = isMajor ? 8 : 5;
+      rulerMarks.push({
+        x: 0,
+        y,
+        points: [0, 0, tickWidth, 0],
+      });
+      if (isMajor && mm > 0 && mm < props.heightMm) {
+        rulerMarks.push({
+          x: 12,
+          y,
+          text: String(mm),
+          rotation: -90,
+        });
+      }
+    }
+  }
+
   return (
     <Stage
       width={props.stageWidth}
@@ -538,6 +588,34 @@ export function LabelCanvas(props: LabelCanvasProps) {
         {gridLines.map((line, index) => (
           <Line key={index} points={line.points} stroke="#e5e5e5" strokeWidth={1} listening={false} />
         ))}
+        {props.showRuler &&
+          rulerMarks.map((mark, index) =>
+            mark.points ? (
+              <Line
+                key={`ruler-tick-${index}`}
+                x={mark.x}
+                y={mark.y}
+                points={mark.points}
+                stroke="#666"
+                strokeWidth={1}
+                listening={false}
+              />
+            ) : mark.text ? (
+              <Text
+                key={`ruler-text-${index}`}
+                x={mark.x}
+                y={mark.y}
+                text={mark.text}
+                fontSize={9}
+                fill="#666"
+                align="center"
+                offsetX={mark.rotation !== undefined ? 0 : 10}
+                offsetY={mark.rotation !== undefined ? -10 : 0}
+                rotation={mark.rotation !== undefined ? mark.rotation : 0}
+                listening={false}
+              />
+            ) : null,
+          )}
         {htmlImage && props.contentBox ? (
           <KonvaImage
             ref={imageNodeRef}
